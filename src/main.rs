@@ -514,15 +514,54 @@ fn add_face(
 ) {
     let normal = [dx as f32, dy as f32, dz as f32];
 
-    // Use default UV coordinates for all faces
-    let uvs = [
-        [tex.u_min, tex.v_min],
-        [tex.u_min, tex.v_max],
-        [tex.u_max, tex.v_max],
-        [tex.u_min, tex.v_min],
-        [tex.u_max, tex.v_max],
-        [tex.u_max, tex.v_min],
-    ];
+    // Apply different UV coordinates based on face direction
+    // Flip V coordinates for south, east, and west faces to fix upside-down textures
+    let uvs = match (dx, dy, dz) {
+        (-1, 0, 0) => [
+            // West - flip V coordinates
+            [tex.u_max, tex.v_max],
+            [tex.u_min, tex.v_max],
+            [tex.u_min, tex.v_min],
+            [tex.u_max, tex.v_max],
+            [tex.u_min, tex.v_min],
+            [tex.u_max, tex.v_min],
+        ],
+        (1, 0, 0) => [
+            // East - flip V coordinates
+            [tex.u_min, tex.v_max],
+            [tex.u_min, tex.v_min],
+            [tex.u_max, tex.v_min],
+            [tex.u_min, tex.v_max],
+            [tex.u_max, tex.v_min],
+            [tex.u_max, tex.v_max],
+        ],
+        (0, 0, -1) => [
+            // North - correct orientation (original, unchanged)
+            [tex.u_min, tex.v_max],
+            [tex.u_max, tex.v_max],
+            [tex.u_max, tex.v_min],
+            [tex.u_min, tex.v_max],
+            [tex.u_max, tex.v_min],
+            [tex.u_min, tex.v_min],
+        ],
+        (0, 0, 1) => [
+            // South - flip V coordinates
+            [tex.u_min, tex.v_max],
+            [tex.u_min, tex.v_min],
+            [tex.u_max, tex.v_min],
+            [tex.u_min, tex.v_max],
+            [tex.u_max, tex.v_min],
+            [tex.u_max, tex.v_max],
+        ],
+        _ => [
+            [tex.u_min, tex.v_min],
+            [tex.u_min, tex.v_max],
+            [tex.u_max, tex.v_max],
+            [tex.u_min, tex.v_min],
+            [tex.u_max, tex.v_max],
+            [tex.u_max, tex.v_min],
+        ],
+    };
 
     let verts = match (dx, dy, dz) {
         (0, 1, 0) => vec![

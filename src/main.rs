@@ -1,8 +1,11 @@
+mod sky;
+
 use cgmath::{Deg, InnerSpace, Matrix, Matrix4, Point3, Vector3, perspective};
 use gl::types::*;
 use glfw::{Action, Context, Key};
 use image::{GenericImageView, RgbaImage};
 use noise::{NoiseFn, Perlin};
+use sky::{SKY_FRAGMENT_SHADER, SKY_VERTEX_SHADER, Sky};
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::ffi::CString;
@@ -807,217 +810,6 @@ impl DayNightCycle {
             self.time -= 1.0;
         }
     }
-
-    fn get_sun_direction(&self) -> Vector3<f32> {
-        // Sun moves from east (-X) to west (+X) in a full arc (including below horizon)
-        // Extended time range for more natural sunrise/sunset
-        // At time 0.15: sun starts rising from eastern horizon
-        // At time 0.5 (noon): sun is directly overhead
-        // At time 0.85: sun finishes setting below western horizon
-
-        // Map time to full circle (including below horizon)
-        let t = (self.time - 0.15) / 0.7;
-        let angle = (1.0 - t) * std::f32::consts::PI;
-
-        // Parametric semicircle: east (-1, y) -> overhead (0, 1) -> west (1, y)
-        let x = angle.cos(); // -1 (east) to 1 (west)
-        let y = angle.sin(); // Can be negative (below horizon)
-        let z = 0.3; // Slight offset to the south
-
-        Vector3::new(x, y, z).normalize()
-    }
-
-    fn get_sky_color(&self) -> [f32; 4] {
-        // Calculate sky color based on time of day
-        // Synchronized with sun visibility (0.15-0.85)
-        // 0.0-0.1: Night (dark blue)
-        // 0.1-0.15: Pre-dawn (dark to orange transition)
-        // 0.15-0.35: Sunrise (orange gradient while sun rises)
-        // 0.35-0.65: Day (blue)
-        // 0.65-0.85: Sunset (orange gradient while sun sets)
-        // 0.85-0.9: Post-dusk (orange to dark transition)
-        // 0.9-1.0: Night (dark blue)
-
-        if self.time < 0.1 || self.time > 0.9 {
-            [0.05, 0.05, 0.15, 1.0]
-        } else if self.time < 0.15 {
-            let t = (self.time - 0.1) / 0.05;
-            let night = [0.05, 0.05, 0.15];
-            let sunrise = [0.9, 0.5, 0.2];
-            [
-                night[0] + (sunrise[0] - night[0]) * t,
-                night[1] + (sunrise[1] - night[1]) * t,
-                night[2] + (sunrise[2] - night[2]) * t,
-                1.0,
-            ]
-        } else if self.time < 0.35 {
-            let t = (self.time - 0.15) / 0.2;
-            let sunrise = [0.9, 0.5, 0.2];
-            let day = [0.53, 0.81, 0.92];
-            [
-                sunrise[0] + (day[0] - sunrise[0]) * t,
-                sunrise[1] + (day[1] - sunrise[1]) * t,
-                sunrise[2] + (day[2] - sunrise[2]) * t,
-                1.0,
-            ]
-        } else if self.time < 0.65 {
-            [0.53, 0.81, 0.92, 1.0]
-        } else if self.time < 0.85 {
-            let t = (self.time - 0.65) / 0.2;
-            let day = [0.53, 0.81, 0.92];
-            let sunset = [0.9, 0.4, 0.15];
-            [
-                day[0] + (sunset[0] - day[0]) * t,
-                day[1] + (sunset[1] - day[1]) * t,
-                day[2] + (sunset[2] - day[2]) * t,
-                1.0,
-            ]
-        } else if self.time < 0.9 {
-            let t = (self.time - 0.85) / 0.05;
-            let sunset = [0.9, 0.4, 0.15];
-            let night = [0.05, 0.05, 0.15];
-            [
-                sunset[0] + (night[0] - sunset[0]) * t,
-                sunset[1] + (night[1] - sunset[1]) * t,
-                sunset[2] + (night[2] - sunset[2]) * t,
-                1.0,
-            ]
-        } else {
-            [0.05, 0.05, 0.15, 1.0]
-        }
-    }
-
-    fn get_ambient_light(&self) -> f32 {
-        if self.time < 0.15 || self.time > 0.85 {
-            0.1
-        } else if self.time < 0.25 {
-            let t = (self.time - 0.15) / 0.1;
-            0.1 + 0.3 * t
-        } else if self.time < 0.75 {
-            0.4
-        } else if self.time < 0.85 {
-            let t = (self.time - 0.75) / 0.1;
-            0.4 - 0.3 * t
-        } else {
-            0.1
-        }
-    }
-
-    fn get_sun_intensity(&self) -> f32 {
-        // Sun intensity - 0 at night, full during day
-        // Gradual fade as sun gets closer to horizon
-        if self.time < 0.15 || self.time > 0.85 {
-            0.0
-        } else if self.time < 0.25 {
-            let t = (self.time - 0.15) / 0.1;
-            t * t
-        } else if self.time < 0.75 {
-            1.0
-        } else if self.time < 0.85 {
-            let t = (self.time - 0.75) / 0.1;
-            let fade = 1.0 - t;
-            fade * fade
-        } else {
-            0.0
-        }
-    }
-
-    fn is_sun_visible(&self) -> bool {
-        self.time >= 0.05 && self.time <= 0.95
-    }
-
-    fn get_sun_position(&self, camera_pos: Point3<f32>) -> Point3<f32> {
-        // Calculate sun position in world space relative to camera
-        let sun_dir = self.get_sun_direction();
-        let distance = 500.0; // Distance from camera
-
-        Point3::new(
-            camera_pos.x + sun_dir.x * distance,
-            camera_pos.y + sun_dir.y * distance,
-            camera_pos.z + sun_dir.z * distance,
-        )
-    }
-}
-
-struct SunMesh {
-    vao: GLuint,
-    vbo: GLuint,
-}
-
-impl SunMesh {
-    fn new() -> Self {
-        let mut vao = 0;
-        let mut vbo = 0;
-
-        let size = 30.0;
-        #[rustfmt::skip]
-        let vertices: [f32; 30] = [
-            // (x, y, z) + UV (u, v)
-            -size, -size, 0.0,  0.0, 0.0,
-             size, -size, 0.0,  1.0, 0.0,
-             size,  size, 0.0,  1.0, 1.0,
-            -size, -size, 0.0,  0.0, 0.0,
-             size,  size, 0.0,  1.0, 1.0,
-            -size,  size, 0.0,  0.0, 1.0,
-        ];
-
-        unsafe {
-            gl::GenVertexArrays(1, &mut vao);
-            gl::GenBuffers(1, &mut vbo);
-
-            gl::BindVertexArray(vao);
-            gl::BindBuffer(gl::ARRAY_BUFFER, vbo);
-            gl::BufferData(
-                gl::ARRAY_BUFFER,
-                (vertices.len() * mem::size_of::<f32>()) as GLsizeiptr,
-                vertices.as_ptr() as *const _,
-                gl::STATIC_DRAW,
-            );
-
-            // Position attribute
-            gl::VertexAttribPointer(
-                0,
-                3,
-                gl::FLOAT,
-                gl::FALSE,
-                5 * mem::size_of::<f32>() as GLsizei,
-                ptr::null(),
-            );
-            gl::EnableVertexAttribArray(0);
-
-            // UV attribute
-            gl::VertexAttribPointer(
-                1,
-                2,
-                gl::FLOAT,
-                gl::FALSE,
-                5 * mem::size_of::<f32>() as GLsizei,
-                (3 * mem::size_of::<f32>()) as *const _,
-            );
-            gl::EnableVertexAttribArray(1);
-
-            gl::BindVertexArray(0);
-        }
-
-        SunMesh { vao, vbo }
-    }
-
-    fn render(&self) {
-        unsafe {
-            gl::BindVertexArray(self.vao);
-            gl::DrawArrays(gl::TRIANGLES, 0, 6);
-            gl::BindVertexArray(0);
-        }
-    }
-}
-
-impl Drop for SunMesh {
-    fn drop(&mut self) {
-        unsafe {
-            gl::DeleteVertexArrays(1, &self.vao);
-            gl::DeleteBuffers(1, &self.vbo);
-        }
-    }
 }
 
 struct Game {
@@ -1025,33 +817,34 @@ struct Game {
     camera: Camera,
     perlin: Perlin,
     shader_program: GLuint,
-    sun_shader_program: GLuint,
+    sky_shader_program: GLuint,
     texture_atlas: TextureAtlas,
     last_mouse_x: f64,
     last_mouse_y: f64,
     first_mouse: bool,
     tree_generator: TreeGenerator,
     day_night_cycle: DayNightCycle,
-    sun_mesh: SunMesh,
+    sky: Sky,
 }
 
 impl Game {
-    pub fn new(shader_program: GLuint, sun_shader_program: GLuint) -> Result<Self, String> {
+    pub fn new(shader_program: GLuint, sky_shader_program: GLuint) -> Result<Self, String> {
         let texture_atlas = TextureAtlas::new()?;
+        let sky = Sky::new(sky_shader_program)?;
 
         Ok(Game {
             chunks: HashMap::new(),
             camera: Camera::new(),
-            perlin: Perlin::new(42),
+            perlin: Perlin::new(02252005),
             shader_program,
-            sun_shader_program,
+            sky_shader_program,
             texture_atlas,
             last_mouse_x: 400.0,
             last_mouse_y: 300.0,
             first_mouse: true,
             tree_generator: TreeGenerator::new(),
             day_night_cycle: DayNightCycle::new(),
-            sun_mesh: SunMesh::new(),
+            sky,
         })
     }
 
@@ -1154,11 +947,17 @@ impl Game {
             gl::UniformMatrix4fv(view_loc, 1, gl::FALSE, view.as_ptr());
             gl::UniformMatrix4fv(proj_loc, 1, gl::FALSE, projection.as_ptr());
 
-            // Pass sun direction, ambient light, and sun intensity to shader
-            let sun_dir = self.day_night_cycle.get_sun_direction();
+            // Pass sun direction, ambient light, and sun intensity to shader using Sky methods
+            let sun_dir = self.sky.get_sun_direction(self.day_night_cycle.time);
             gl::Uniform3f(sun_dir_loc, sun_dir.x, sun_dir.y, sun_dir.z);
-            gl::Uniform1f(ambient_loc, self.day_night_cycle.get_ambient_light());
-            gl::Uniform1f(sun_intensity_loc, self.day_night_cycle.get_sun_intensity());
+            gl::Uniform1f(
+                ambient_loc,
+                Sky::get_ambient_light(self.day_night_cycle.time),
+            );
+            gl::Uniform1f(
+                sun_intensity_loc,
+                Sky::get_sun_intensity(self.day_night_cycle.time),
+            );
 
             // Bind texture atlas
             gl::ActiveTexture(gl::TEXTURE0);
@@ -1170,58 +969,22 @@ impl Game {
                 }
             }
 
-            if self.day_night_cycle.is_sun_visible() {
-                gl::UseProgram(self.sun_shader_program);
-                gl::Enable(gl::BLEND);
-                gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
+            // Calculate sun and moon colors based on time of day
+            let suncolor = [1.0, 1.0, 0.0, 1.0]; // Yellow sun
+            let suncolor2 = [1.0, 1.0, 1.0, 1.0]; // White center
+            let mooncolor = [0.5, 0.57, 0.65, 1.0]; // Bluish moon
+            let mooncolor2 = [0.85, 0.875, 0.9, 1.0]; // Lighter moon center
 
-                let sun_pos = self.day_night_cycle.get_sun_position(self.camera.position);
-
-                // Create model matrix for sun (billboard facing camera)
-                let to_camera = (self.camera.position - sun_pos).normalize();
-                let right = Vector3::new(0.0, 1.0, 0.0).cross(to_camera).normalize();
-                let up = to_camera.cross(right);
-
-                let model = Matrix4::new(
-                    right.x,
-                    right.y,
-                    right.z,
-                    0.0,
-                    up.x,
-                    up.y,
-                    up.z,
-                    0.0,
-                    to_camera.x,
-                    to_camera.y,
-                    to_camera.z,
-                    0.0,
-                    sun_pos.x,
-                    sun_pos.y,
-                    sun_pos.z,
-                    1.0,
-                );
-
-                let view_loc = gl::GetUniformLocation(
-                    self.sun_shader_program,
-                    CString::new("view").unwrap().as_ptr(),
-                );
-                let proj_loc = gl::GetUniformLocation(
-                    self.sun_shader_program,
-                    CString::new("projection").unwrap().as_ptr(),
-                );
-                let model_loc = gl::GetUniformLocation(
-                    self.sun_shader_program,
-                    CString::new("model").unwrap().as_ptr(),
-                );
-
-                gl::UniformMatrix4fv(view_loc, 1, gl::FALSE, view.as_ptr());
-                gl::UniformMatrix4fv(proj_loc, 1, gl::FALSE, projection.as_ptr());
-                gl::UniformMatrix4fv(model_loc, 1, gl::FALSE, model.as_ptr());
-
-                self.sun_mesh.render();
-
-                gl::Disable(gl::BLEND);
-            }
+            self.sky.render(
+                self.camera.position,
+                &view,
+                &projection,
+                self.day_night_cycle.time,
+                suncolor,
+                suncolor2,
+                mooncolor,
+                mooncolor2,
+            );
         }
     }
 }
@@ -1255,12 +1018,12 @@ fn main() {
     let fragment_shader = compile_shader(FRAGMENT_SHADER, gl::FRAGMENT_SHADER);
     let shader_program = link_program(vertex_shader, fragment_shader);
 
-    let sun_vertex_shader = compile_shader(SUN_VERTEX_SHADER, gl::VERTEX_SHADER);
-    let sun_fragment_shader = compile_shader(SUN_FRAGMENT_SHADER, gl::FRAGMENT_SHADER);
-    let sun_shader_program = link_program(sun_vertex_shader, sun_fragment_shader);
+    let sky_vertex_shader = compile_shader(SKY_VERTEX_SHADER, gl::VERTEX_SHADER);
+    let sky_fragment_shader = compile_shader(SKY_FRAGMENT_SHADER, gl::FRAGMENT_SHADER);
+    let sky_shader_program = link_program(sky_vertex_shader, sky_fragment_shader);
 
     let mut game =
-        Game::new(shader_program, sun_shader_program).expect("Failed to initialize game");
+        Game::new(shader_program, sky_shader_program).expect("Failed to initialize game");
     let mut last_frame = glfw.get_time() as f32;
 
     while !window.should_close() {
@@ -1285,7 +1048,7 @@ fn main() {
         game.day_night_cycle.update(delta_time);
         game.update_chunks();
 
-        let sky_color = game.day_night_cycle.get_sky_color();
+        let sky_color = Sky::get_sky_color(game.day_night_cycle.time);
         unsafe {
             gl::ClearColor(sky_color[0], sky_color[1], sky_color[2], sky_color[3]);
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
@@ -1354,48 +1117,5 @@ void main() {
     vec3 result = tintedColor * totalLight;
     
     color = vec4(result, texColor.a);
-}
-"#;
-
-const SUN_VERTEX_SHADER: &str = r#"
-#version 330 core
-layout (location = 0) in vec3 aPos;
-layout (location = 1) in vec2 aTexCoord;
-
-out vec2 TexCoord;
-
-uniform mat4 model;
-uniform mat4 view;
-uniform mat4 projection;
-
-void main() {
-    gl_Position = projection * view * model * vec4(aPos, 1.0);
-    TexCoord = aTexCoord;
-}
-"#;
-
-const SUN_FRAGMENT_SHADER: &str = r#"
-#version 330 core
-in vec2 TexCoord;
-
-out vec4 FragColor;
-
-void main() {
-    // Calculate distance from center
-    vec2 center = vec2(0.5, 0.5);
-    float dist = distance(TexCoord, center);
-    
-    // Create gradient from white center to bright yellow edges
-    vec3 white = vec3(1.0, 1.0, 1.0);
-    vec3 yellow = vec3(1.0, 0.9, 0.0);
-    
-    // Smooth transition from center to edge
-    float t = smoothstep(0.0, 0.5, dist);
-    vec3 sunColor = mix(white, yellow, t);
-    
-    // Add some falloff at the edges for soft appearance
-    float alpha = 1.0 - smoothstep(0.4, 0.5, dist);
-    
-    FragColor = vec4(sunColor, alpha);
 }
 "#;

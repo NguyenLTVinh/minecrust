@@ -848,10 +848,18 @@ impl Game {
         })
     }
 
+    fn cleanup_shader_programs(&self) {
+        unsafe {
+            gl::DeleteProgram(self.shader_program);
+            gl::DeleteProgram(self.sky_shader_program);
+        }
+    }
+
     fn update_chunks(&mut self) {
         let player_chunk_x = (self.camera.position.x / CHUNK_SIZE as f32).floor() as i32;
         let player_chunk_z = (self.camera.position.z / CHUNK_SIZE as f32).floor() as i32;
 
+        // Generate new chunks within render distance
         for x in (player_chunk_x - RENDER_DISTANCE)..=(player_chunk_x + RENDER_DISTANCE) {
             for z in (player_chunk_z - RENDER_DISTANCE)..=(player_chunk_z + RENDER_DISTANCE) {
                 let pos = ChunkPos { x, z };
@@ -862,11 +870,33 @@ impl Game {
             }
         }
 
-        for chunk in self.chunks.values_mut() {
-            if chunk.mesh.is_none() {
-                let vertices = generate_chunk_mesh(chunk, &self.texture_atlas);
-                if !vertices.is_empty() {
-                    chunk.mesh = Some(ChunkMesh::new(&vertices));
+        // Unload meshes for chunks that are too far from player (memory leak fix)
+        // Keep the block data so player builds are preserved
+        // Use a larger distance before unloading to avoid thrashing
+        let unload_distance = RENDER_DISTANCE + 8;
+        for (pos, chunk) in self.chunks.iter_mut() {
+            let dx = (pos.x - player_chunk_x).abs();
+            let dz = (pos.z - player_chunk_z).abs();
+
+            // If chunk is too far, unload its mesh to free GPU memory
+            if dx > unload_distance || dz > unload_distance {
+                if chunk.mesh.is_some() {
+                    chunk.mesh = None; // Drop will automatically free GPU resources
+                }
+            }
+        }
+
+        // Generate/regenerate meshes for chunks within render distance
+        for x in (player_chunk_x - RENDER_DISTANCE)..=(player_chunk_x + RENDER_DISTANCE) {
+            for z in (player_chunk_z - RENDER_DISTANCE)..=(player_chunk_z + RENDER_DISTANCE) {
+                let pos = ChunkPos { x, z };
+                if let Some(chunk) = self.chunks.get_mut(&pos) {
+                    if chunk.mesh.is_none() {
+                        let vertices = generate_chunk_mesh(chunk, &self.texture_atlas);
+                        if !vertices.is_empty() {
+                            chunk.mesh = Some(ChunkMesh::new(&vertices));
+                        }
+                    }
                 }
             }
         }
@@ -986,6 +1016,12 @@ impl Game {
                 mooncolor2,
             );
         }
+    }
+}
+
+impl Drop for Game {
+    fn drop(&mut self) {
+        self.cleanup_shader_programs();
     }
 }
 

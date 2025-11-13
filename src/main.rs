@@ -1,12 +1,202 @@
 use cgmath::{Deg, InnerSpace, Matrix, Matrix4, Point3, Vector3, perspective};
 use gl::types::*;
 use glfw::{Action, Context, Key};
+use image::{GenericImageView, RgbaImage};
 use noise::{NoiseFn, Perlin};
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::ffi::CString;
 use std::mem;
 use std::ptr;
+
+// Texture atlas configuration
+const ATLAS_SIZE: u32 = 32; // 2x4 grid = 32x64 pixels
+const TEXTURE_SIZE: u32 = 16;
+
+#[derive(Clone, Copy)]
+struct TextureCoords {
+    u_min: f32,
+    v_min: f32,
+    u_max: f32,
+    v_max: f32,
+}
+
+impl TextureCoords {
+    fn new(index: usize, atlas_width: u32, atlas_height: u32) -> Self {
+        let textures_per_row = (atlas_width / TEXTURE_SIZE) as usize;
+        let row = index / textures_per_row;
+        let col = index % textures_per_row;
+
+        let u_min = (col * TEXTURE_SIZE as usize) as f32 / atlas_width as f32;
+        let v_min = (row * TEXTURE_SIZE as usize) as f32 / atlas_height as f32;
+        let u_max = ((col + 1) * TEXTURE_SIZE as usize) as f32 / atlas_width as f32;
+        let v_max = ((row + 1) * TEXTURE_SIZE as usize) as f32 / atlas_height as f32;
+
+        TextureCoords {
+            u_min,
+            v_min,
+            u_max,
+            v_max,
+        }
+    }
+}
+
+// Texture atlas manager
+struct TextureAtlas {
+    texture_id: GLuint,
+    grass_color: [f32; 3],
+    foliage_color: [f32; 3],
+    atlas_width: u32,
+    atlas_height: u32,
+}
+
+impl TextureAtlas {
+    fn new() -> Result<Self, String> {
+        // Load all textures
+        let stone = image::open("textures/block/stone.png")
+            .map_err(|e| format!("Failed to load stone.png: {}", e))?;
+        let dirt = image::open("textures/block/dirt.png")
+            .map_err(|e| format!("Failed to load dirt.png: {}", e))?;
+        let grass_side = image::open("textures/block/grass_block_side.png")
+            .map_err(|e| format!("Failed to load grass_block_side.png: {}", e))?;
+        let grass_top = image::open("textures/block/grass_block_top.png")
+            .map_err(|e| format!("Failed to load grass_block_top.png: {}", e))?;
+        let oak_log = image::open("textures/block/oak_log.png")
+            .map_err(|e| format!("Failed to load oak_log.png: {}", e))?;
+        let oak_log_top = image::open("textures/block/oak_log_top.png")
+            .map_err(|e| format!("Failed to load oak_log_top.png: {}", e))?;
+        let oak_leaves = image::open("textures/block/oak_leaves.png")
+            .map_err(|e| format!("Failed to load oak_leaves.png: {}", e))?;
+
+        // Create atlas (2x4 grid for 7 textures)
+        let atlas_width = TEXTURE_SIZE * 2;
+        let atlas_height = TEXTURE_SIZE * 4;
+        let mut atlas = RgbaImage::new(atlas_width, atlas_height);
+
+        // Copy textures into atlas
+        let textures = vec![
+            stone,
+            dirt,
+            grass_side,
+            grass_top,
+            oak_log,
+            oak_log_top,
+            oak_leaves,
+        ];
+        for (i, tex) in textures.iter().enumerate() {
+            let tex = tex.to_rgba8();
+            let row = i / 2;
+            let col = i % 2;
+            let x_offset = col as u32 * TEXTURE_SIZE;
+            let y_offset = row as u32 * TEXTURE_SIZE;
+
+            for y in 0..TEXTURE_SIZE {
+                for x in 0..TEXTURE_SIZE {
+                    let pixel = tex.get_pixel(x, y);
+                    atlas.put_pixel(x_offset + x, y_offset + y, *pixel);
+                }
+            }
+        }
+
+        // Load colormaps
+        let grass_color = Self::load_colormap_sample("textures/colormap/grass.png")?;
+        let foliage_color = Self::load_colormap_sample("textures/colormap/foliage.png")?;
+
+        // Create OpenGL texture
+        let texture_id = unsafe {
+            let mut texture = 0;
+            gl::GenTextures(1, &mut texture);
+            gl::BindTexture(gl::TEXTURE_2D, texture);
+
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32);
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::REPEAT as i32);
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
+
+            gl::TexImage2D(
+                gl::TEXTURE_2D,
+                0,
+                gl::RGBA as i32,
+                atlas_width as i32,
+                atlas_height as i32,
+                0,
+                gl::RGBA,
+                gl::UNSIGNED_BYTE,
+                atlas.as_raw().as_ptr() as *const _,
+            );
+
+            texture
+        };
+
+        Ok(TextureAtlas {
+            texture_id,
+            grass_color,
+            foliage_color,
+            atlas_width,
+            atlas_height,
+        })
+    }
+
+    fn load_colormap_sample(path: &str) -> Result<[f32; 3], String> {
+        let img = image::open(path).map_err(|e| format!("Failed to load {}: {}", path, e))?;
+        let img = img.to_rgba8();
+        let (width, height) = img.dimensions();
+
+        let x = width / 2;
+        let y = height / 2;
+        let pixel = img.get_pixel(x, y);
+
+        Ok([
+            pixel[0] as f32 / 255.0,
+            pixel[1] as f32 / 255.0,
+            pixel[2] as f32 / 255.0,
+        ])
+    }
+
+    fn get_tex_coords(&self, block: BlockType, face: FaceDirection) -> TextureCoords {
+        let index = match block {
+            BlockType::Stone => 0,
+            BlockType::Grass => match face {
+                FaceDirection::Top => 3,
+                FaceDirection::Bottom => 1,
+                _ => 2,
+            },
+            BlockType::Wood => match face {
+                FaceDirection::Top | FaceDirection::Bottom => 5,
+                _ => 4,
+            },
+            BlockType::Leaves => 6,
+            BlockType::Air => 0,
+        };
+        TextureCoords::new(index, self.atlas_width, self.atlas_height)
+    }
+
+    fn get_tint(&self, block: BlockType) -> [f32; 3] {
+        match block {
+            BlockType::Grass => self.grass_color,
+            BlockType::Leaves => self.foliage_color,
+            _ => [1.0, 1.0, 1.0],
+        }
+    }
+}
+
+impl Drop for TextureAtlas {
+    fn drop(&mut self) {
+        unsafe {
+            gl::DeleteTextures(1, &self.texture_id);
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum FaceDirection {
+    Top,
+    Bottom,
+    Front,
+    Back,
+    Right,
+    Left,
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 enum BlockType {
@@ -203,38 +393,45 @@ impl ChunkMesh {
                 gl::STATIC_DRAW,
             );
 
+            // Vertex format: position(3) + uv(2) + tint(3) + normal(3) = 11 floats
+            let stride = 11 * mem::size_of::<f32>() as GLsizei;
+
             // Position attribute
-            gl::VertexAttribPointer(
-                0,
-                3,
-                gl::FLOAT,
-                gl::FALSE,
-                9 * mem::size_of::<f32>() as GLsizei,
-                ptr::null(),
-            );
+            gl::VertexAttribPointer(0, 3, gl::FLOAT, gl::FALSE, stride, ptr::null());
             gl::EnableVertexAttribArray(0);
 
-            // Color attribute
+            // UV attribute
             gl::VertexAttribPointer(
                 1,
-                3,
+                2,
                 gl::FLOAT,
                 gl::FALSE,
-                9 * mem::size_of::<f32>() as GLsizei,
+                stride,
                 (3 * mem::size_of::<f32>()) as *const _,
             );
             gl::EnableVertexAttribArray(1);
 
-            // Normal attribute (for lighting)
+            // Tint attribute
             gl::VertexAttribPointer(
                 2,
                 3,
                 gl::FLOAT,
                 gl::FALSE,
-                9 * mem::size_of::<f32>() as GLsizei,
-                (6 * mem::size_of::<f32>()) as *const _,
+                stride,
+                (5 * mem::size_of::<f32>()) as *const _,
             );
             gl::EnableVertexAttribArray(2);
+
+            // Normal attribute (for lighting)
+            gl::VertexAttribPointer(
+                3,
+                3,
+                gl::FLOAT,
+                gl::FALSE,
+                stride,
+                (8 * mem::size_of::<f32>()) as *const _,
+            );
+            gl::EnableVertexAttribArray(3);
 
             gl::BindVertexArray(0);
         }
@@ -242,7 +439,7 @@ impl ChunkMesh {
         ChunkMesh {
             vao,
             vbo,
-            vertex_count: (vertices.len() / 9) as i32,
+            vertex_count: (vertices.len() / 11) as i32,
         }
     }
 
@@ -264,8 +461,8 @@ impl Drop for ChunkMesh {
     }
 }
 
-// Generate mesh for a chunk (greedy meshing simplified)
-fn generate_chunk_mesh(chunk: &Chunk) -> Vec<f32> {
+// Generate mesh for a chunk with texture atlas
+fn generate_chunk_mesh(chunk: &Chunk, atlas: &TextureAtlas) -> Vec<f32> {
     let mut vertices = Vec::new();
 
     for x in 0..CHUNK_SIZE {
@@ -276,24 +473,25 @@ fn generate_chunk_mesh(chunk: &Chunk) -> Vec<f32> {
                     continue;
                 }
 
-                let color = block.get_color();
                 let wx = (chunk.pos.x * CHUNK_SIZE + x) as f32;
                 let wy = y as f32;
                 let wz = (chunk.pos.z * CHUNK_SIZE + z) as f32;
+                let tint = atlas.get_tint(block);
 
                 // Check each face and only render if adjacent block is air
                 let faces = [
-                    (0, 1, 0, true),  // Top
-                    (0, -1, 0, true), // Bottom
-                    (0, 0, 1, true),  // Front
-                    (0, 0, -1, true), // Back
-                    (1, 0, 0, true),  // Right
-                    (-1, 0, 0, true), // Left
+                    (FaceDirection::Top, 0, 1, 0),
+                    (FaceDirection::Bottom, 0, -1, 0),
+                    (FaceDirection::Front, 0, 0, 1),
+                    (FaceDirection::Back, 0, 0, -1),
+                    (FaceDirection::Right, 1, 0, 0),
+                    (FaceDirection::Left, -1, 0, 0),
                 ];
 
-                for (dx, dy, dz, _) in faces {
+                for (face_dir, dx, dy, dz) in faces {
                     if !chunk.get_block(x + dx, y + dy, z + dz).is_solid() {
-                        add_face(&mut vertices, wx, wy, wz, dx, dy, dz, color);
+                        let tex_coords = atlas.get_tex_coords(block, face_dir);
+                        add_face(&mut vertices, wx, wy, wz, dx, dy, dz, tex_coords, tint);
                     }
                 }
             }
@@ -311,11 +509,20 @@ fn add_face(
     dx: i32,
     dy: i32,
     dz: i32,
-    color: [f32; 3],
+    tex: TextureCoords,
+    tint: [f32; 3],
 ) {
     let normal = [dx as f32, dy as f32, dz as f32];
-    let light = 0.6 + 0.4 * (dy as f32 * 0.5 + 0.5); // Simple lighting based on face direction
-    let lit_color = [color[0] * light, color[1] * light, color[2] * light];
+
+    // Use default UV coordinates for all faces
+    let uvs = [
+        [tex.u_min, tex.v_min],
+        [tex.u_min, tex.v_max],
+        [tex.u_max, tex.v_max],
+        [tex.u_min, tex.v_min],
+        [tex.u_max, tex.v_max],
+        [tex.u_max, tex.v_min],
+    ];
 
     let verts = match (dx, dy, dz) {
         (0, 1, 0) => vec![
@@ -447,9 +654,10 @@ fn add_face(
         _ => vec![],
     };
 
-    for i in (0..verts.len()).step_by(3) {
-        vertices.extend_from_slice(&verts[i..i + 3]);
-        vertices.extend_from_slice(&lit_color);
+    for (i, pos_idx) in (0..verts.len()).step_by(3).enumerate() {
+        vertices.extend_from_slice(&verts[pos_idx..pos_idx + 3]);
+        vertices.extend_from_slice(&uvs[i]);
+        vertices.extend_from_slice(&tint);
         vertices.extend_from_slice(&normal);
     }
 }
@@ -779,6 +987,7 @@ struct Game {
     perlin: Perlin,
     shader_program: GLuint,
     sun_shader_program: GLuint,
+    texture_atlas: TextureAtlas,
     last_mouse_x: f64,
     last_mouse_y: f64,
     first_mouse: bool,
@@ -788,20 +997,23 @@ struct Game {
 }
 
 impl Game {
-    pub fn new(shader_program: GLuint, sun_shader_program: GLuint) -> Self {
-        Game {
+    pub fn new(shader_program: GLuint, sun_shader_program: GLuint) -> Result<Self, String> {
+        let texture_atlas = TextureAtlas::new()?;
+
+        Ok(Game {
             chunks: HashMap::new(),
             camera: Camera::new(),
             perlin: Perlin::new(42),
             shader_program,
             sun_shader_program,
+            texture_atlas,
             last_mouse_x: 400.0,
             last_mouse_y: 300.0,
             first_mouse: true,
             tree_generator: TreeGenerator::new(),
             day_night_cycle: DayNightCycle::new(),
             sun_mesh: SunMesh::new(),
-        }
+        })
     }
 
     fn update_chunks(&mut self) {
@@ -820,7 +1032,7 @@ impl Game {
 
         for chunk in self.chunks.values_mut() {
             if chunk.mesh.is_none() {
-                let vertices = generate_chunk_mesh(chunk);
+                let vertices = generate_chunk_mesh(chunk, &self.texture_atlas);
                 if !vertices.is_empty() {
                     chunk.mesh = Some(ChunkMesh::new(&vertices));
                 }
@@ -908,6 +1120,10 @@ impl Game {
             gl::Uniform3f(sun_dir_loc, sun_dir.x, sun_dir.y, sun_dir.z);
             gl::Uniform1f(ambient_loc, self.day_night_cycle.get_ambient_light());
             gl::Uniform1f(sun_intensity_loc, self.day_night_cycle.get_sun_intensity());
+
+            // Bind texture atlas
+            gl::ActiveTexture(gl::TEXTURE0);
+            gl::BindTexture(gl::TEXTURE_2D, self.texture_atlas.texture_id);
 
             for chunk in self.chunks.values() {
                 if let Some(ref mesh) = chunk.mesh {
@@ -1004,7 +1220,8 @@ fn main() {
     let sun_fragment_shader = compile_shader(SUN_FRAGMENT_SHADER, gl::FRAGMENT_SHADER);
     let sun_shader_program = link_program(sun_vertex_shader, sun_fragment_shader);
 
-    let mut game = Game::new(shader_program, sun_shader_program);
+    let mut game =
+        Game::new(shader_program, sun_shader_program).expect("Failed to initialize game");
     let mut last_frame = glfw.get_time() as f32;
 
     while !window.should_close() {
@@ -1045,10 +1262,12 @@ fn main() {
 const VERTEX_SHADER: &str = r#"
 #version 330 core
 layout (location = 0) in vec3 aPos;
-layout (location = 1) in vec3 aColor;
-layout (location = 2) in vec3 aNormal;
+layout (location = 1) in vec2 aTexCoord;
+layout (location = 2) in vec3 aTint;
+layout (location = 3) in vec3 aNormal;
 
-out vec3 FragColor;
+out vec2 TexCoord;
+out vec3 Tint;
 out vec3 Normal;
 
 uniform mat4 view;
@@ -1056,24 +1275,32 @@ uniform mat4 projection;
 
 void main() {
     gl_Position = projection * view * vec4(aPos, 1.0);
-    FragColor = aColor;
+    TexCoord = aTexCoord;
+    Tint = aTint;
     Normal = aNormal;
 }
 "#;
 
 const FRAGMENT_SHADER: &str = r#"
 #version 330 core
-in vec3 FragColor;
+in vec2 TexCoord;
+in vec3 Tint;
 in vec3 Normal;
-in vec3 FragPos;
 
 out vec4 color;
 
+uniform sampler2D blockTexture;
 uniform vec3 sunDirection;
 uniform float ambientLight;
 uniform float sunIntensity;
 
 void main() {
+    // Sample the texture
+    vec4 texColor = texture(blockTexture, TexCoord);
+    
+    // Apply tint to texture color
+    vec3 tintedColor = texColor.rgb * Tint;
+    
     // Normalize the normal and sun direction
     vec3 norm = normalize(Normal);
     vec3 lightDir = normalize(sunDirection);
@@ -1084,10 +1311,10 @@ void main() {
     // Add ambient light so we can still see at night
     float totalLight = ambientLight + diff * (1.0 - ambientLight);
     
-    // Apply lighting to fragment color
-    vec3 result = FragColor * totalLight;
+    // Apply lighting to tinted texture color
+    vec3 result = tintedColor * totalLight;
     
-    color = vec4(result, 1.0);
+    color = vec4(result, texColor.a);
 }
 "#;
 

@@ -3,6 +3,7 @@ use gl::types::*;
 use glfw::{Action, Context, Key};
 use noise::{NoiseFn, Perlin};
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::ffi::CString;
 use std::mem;
 use std::ptr;
@@ -13,6 +14,8 @@ enum BlockType {
     Air,
     Grass,
     Stone,
+    Wood,
+    Leaves,
 }
 
 impl BlockType {
@@ -25,6 +28,8 @@ impl BlockType {
             BlockType::Air => [0.0, 0.0, 0.0],
             BlockType::Grass => [0.2, 0.8, 0.2],
             BlockType::Stone => [0.5, 0.5, 0.5],
+            BlockType::Wood => [0.55, 0.35, 0.2],
+            BlockType::Leaves => [0.1, 0.6, 0.1],
         }
     }
 }
@@ -49,35 +54,44 @@ struct Chunk {
 }
 
 impl Chunk {
-    fn new(pos: ChunkPos, perlin: &Perlin) -> Self {
-        let mut blocks = vec![BlockType::Air; (CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE) as usize];
+    pub fn new(pos: ChunkPos, perlin: &Perlin, tree_generator: &mut TreeGenerator) -> Self {
+        let mut chunk = Chunk {
+            blocks: vec![BlockType::Air; (CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE) as usize],
+            mesh: None,
+            pos,
+        };
 
-        // Procedural terrain generation
         for x in 0..CHUNK_SIZE {
             for z in 0..CHUNK_SIZE {
                 let world_x = pos.x * CHUNK_SIZE + x;
                 let world_z = pos.z * CHUNK_SIZE + z;
-
-                // Use Perlin noise for height
                 let height = (perlin.get([world_x as f64 * 0.05, world_z as f64 * 0.05]) * 8.0
                     + 32.0) as i32;
 
+                // Place blocks
                 for y in 0..CHUNK_HEIGHT.min(height) {
                     let idx = Self::get_index(x, y, z);
-                    blocks[idx] = if y == height - 1 {
+                    chunk.blocks[idx] = if y == height - 1 {
                         BlockType::Grass
                     } else {
                         BlockType::Stone
                     };
                 }
+
+                // Tree generation
+                let tree_noise =
+                    perlin.get([world_x as f64 * 0.1 + 1000.0, world_z as f64 * 0.1 + 1000.0]);
+                if tree_noise > 0.7 && height < CHUNK_HEIGHT - 8 {
+                    if tree_generator.can_place_tree(world_x, world_z) {
+                        let trunk_height =
+                            tree_generator.random_trunk_height(perlin, world_x, world_z);
+                        chunk.generate_tree(x, height, z, trunk_height);
+                        tree_generator.register_tree(world_x, world_z);
+                    }
+                }
             }
         }
-
-        Chunk {
-            blocks,
-            mesh: None,
-            pos,
-        }
+        chunk
     }
 
     fn get_index(x: i32, y: i32, z: i32) -> usize {
@@ -97,6 +111,74 @@ impl Chunk {
         }
         self.blocks[Self::get_index(x, y, z)] = block;
         self.mesh = None; // Invalidate mesh
+    }
+
+    fn generate_tree(&mut self, x: i32, base_y: i32, z: i32, trunk_height: i32) {
+        let leaf_radius = 2;
+
+        // Generate trunk
+        for y in base_y..(base_y + trunk_height) {
+            self.set_block(x, y, z, BlockType::Wood);
+        }
+
+        // Generate leaves
+        let leaf_start = base_y + trunk_height - 2;
+        for dy in 0..4 {
+            let y = leaf_start + dy;
+            let radius = if dy == 3 { 1 } else { leaf_radius };
+
+            for dx in -radius..=radius {
+                for dz in -radius..=radius {
+                    let dist = (dx * dx + dz * dz) as f32;
+                    if dist <= (radius * radius) as f32 {
+                        let block = self.get_block(x + dx, y, z + dz);
+                        if block == BlockType::Air {
+                            self.set_block(x + dx, y, z + dz, BlockType::Leaves);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub struct TreeGenerator {
+    tree_positions: HashSet<(i32, i32)>,
+}
+
+impl TreeGenerator {
+    pub fn new() -> Self {
+        TreeGenerator {
+            tree_positions: HashSet::new(),
+        }
+    }
+
+    pub fn can_place_tree(&self, world_x: i32, world_z: i32) -> bool {
+        // Check if tree is too close to chunk borders
+        let local_x = world_x.rem_euclid(CHUNK_SIZE);
+        let local_z = world_z.rem_euclid(CHUNK_SIZE);
+
+        if local_x < 3 || local_x >= CHUNK_SIZE - 3 || local_z < 3 || local_z >= CHUNK_SIZE - 3 {
+            return false;
+        }
+
+        // Check if tree is too close to other trees
+        !self.tree_positions.iter().any(|&(tx, tz)| {
+            let dx = (tx - world_x).abs();
+            let dz = (tz - world_z).abs();
+            dx < 5 && dz < 5
+        })
+    }
+
+    pub fn register_tree(&mut self, world_x: i32, world_z: i32) {
+        self.tree_positions.insert((world_x, world_z));
+    }
+
+    pub fn random_trunk_height(&self, perlin: &Perlin, world_x: i32, world_z: i32) -> i32 {
+        4 + (perlin
+            .get([world_x as f64 * 0.2, world_z as f64 * 0.2])
+            .abs()
+            * 3.0) as i32
     }
 }
 
@@ -466,10 +548,11 @@ struct Game {
     last_mouse_x: f64,
     last_mouse_y: f64,
     first_mouse: bool,
+    tree_generator: TreeGenerator,
 }
 
 impl Game {
-    fn new(shader_program: GLuint) -> Self {
+    pub fn new(shader_program: GLuint) -> Self {
         Game {
             chunks: HashMap::new(),
             camera: Camera::new(),
@@ -478,6 +561,7 @@ impl Game {
             last_mouse_x: 400.0,
             last_mouse_y: 300.0,
             first_mouse: true,
+            tree_generator: TreeGenerator::new(),
         }
     }
 
@@ -485,18 +569,16 @@ impl Game {
         let player_chunk_x = (self.camera.position.x / CHUNK_SIZE as f32).floor() as i32;
         let player_chunk_z = (self.camera.position.z / CHUNK_SIZE as f32).floor() as i32;
 
-        // Load chunks around player
         for x in (player_chunk_x - RENDER_DISTANCE)..=(player_chunk_x + RENDER_DISTANCE) {
             for z in (player_chunk_z - RENDER_DISTANCE)..=(player_chunk_z + RENDER_DISTANCE) {
                 let pos = ChunkPos { x, z };
                 if !self.chunks.contains_key(&pos) {
-                    let chunk = Chunk::new(pos, &self.perlin);
+                    let chunk = Chunk::new(pos, &self.perlin, &mut self.tree_generator);
                     self.chunks.insert(pos, chunk);
                 }
             }
         }
 
-        // Generate meshes for chunks that don't have them
         for chunk in self.chunks.values_mut() {
             if chunk.mesh.is_none() {
                 let vertices = generate_chunk_mesh(chunk);
@@ -585,7 +667,7 @@ fn main() {
     ));
 
     let (mut window, events) = glfw
-        .create_window(800, 600, "Rust Voxel Engine", glfw::WindowMode::Windowed)
+        .create_window(1280, 720, "Rust Voxel Engine", glfw::WindowMode::Windowed)
         .expect("Failed to create GLFW window");
 
     window.set_key_polling(true);

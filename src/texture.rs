@@ -1,9 +1,41 @@
 use crate::block::{BlockType, FaceDirection};
 use gl::types::*;
-use image::RgbaImage;
+use image::{DynamicImage, RgbaImage};
+use std::path::PathBuf;
 
-const ATLAS_SIZE: u32 = 48;
 const TEXTURE_SIZE: u32 = 16;
+
+fn get_texture_path(relative_path: &str) -> PathBuf {
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    PathBuf::from(manifest_dir)
+        .join("textures")
+        .join(relative_path)
+}
+
+fn create_fallback_texture() -> DynamicImage {
+    let mut img = RgbaImage::new(TEXTURE_SIZE, TEXTURE_SIZE);
+    for y in 0..TEXTURE_SIZE {
+        for x in 0..TEXTURE_SIZE {
+            img.put_pixel(x, y, image::Rgba([255, 0, 255, 255]));
+        }
+    }
+    DynamicImage::ImageRgba8(img)
+}
+
+fn load_texture_or_fallback(relative_path: &str) -> DynamicImage {
+    let full_path = get_texture_path(relative_path);
+    match image::open(&full_path) {
+        Ok(img) => img,
+        Err(e) => {
+            eprintln!(
+                "Warning: Failed to load texture {}: {}. Using purple fallback.",
+                full_path.display(),
+                e
+            );
+            create_fallback_texture()
+        }
+    }
+}
 
 #[derive(Clone, Copy)]
 pub struct TextureCoords {
@@ -43,26 +75,16 @@ pub struct TextureAtlas {
 
 impl TextureAtlas {
     pub fn new() -> Result<Self, String> {
-        let stone = image::open("textures/block/stone.png")
-            .map_err(|e| format!("Failed to load stone.png: {}", e))?;
-        let dirt = image::open("textures/block/dirt.png")
-            .map_err(|e| format!("Failed to load dirt.png: {}", e))?;
-        let grass_side = image::open("textures/block/grass_block_side.png")
-            .map_err(|e| format!("Failed to load grass_block_side.png: {}", e))?;
-        let grass_top = image::open("textures/block/grass_block_top.png")
-            .map_err(|e| format!("Failed to load grass_block_top.png: {}", e))?;
-        let oak_log = image::open("textures/block/oak_log.png")
-            .map_err(|e| format!("Failed to load oak_log.png: {}", e))?;
-        let oak_log_top = image::open("textures/block/oak_log_top.png")
-            .map_err(|e| format!("Failed to load oak_log_top.png: {}", e))?;
-        let oak_leaves = image::open("textures/block/oak_leaves.png")
-            .map_err(|e| format!("Failed to load oak_leaves.png: {}", e))?;
-        let water_still = image::open("textures/block/water_still.png")
-            .map_err(|e| format!("Failed to load water_still.png: {}", e))?;
-        let snow = image::open("textures/block/snow.png")
-            .map_err(|e| format!("Failed to load snow.png: {}", e))?;
-        let grass_snow = image::open("textures/block/grass_block_snow.png")
-            .map_err(|e| format!("Failed to load grass_block_snow.png: {}", e))?;
+        let stone = load_texture_or_fallback("block/stone.png");
+        let dirt = load_texture_or_fallback("block/dirt.png");
+        let grass_side = load_texture_or_fallback("block/grass_block_side.png");
+        let grass_top = load_texture_or_fallback("block/grass_block_top.png");
+        let oak_log = load_texture_or_fallback("block/oak_log.png");
+        let oak_log_top = load_texture_or_fallback("block/oak_log_top.png");
+        let oak_leaves = load_texture_or_fallback("block/oak_leaves.png");
+        let water_still = load_texture_or_fallback("block/water_still.png");
+        let snow = load_texture_or_fallback("block/snow.png");
+        let grass_snow = load_texture_or_fallback("block/grass_block_snow.png");
 
         let atlas_width = TEXTURE_SIZE * 3;
         let atlas_height = TEXTURE_SIZE * 4;
@@ -95,8 +117,8 @@ impl TextureAtlas {
             }
         }
 
-        let grass_color = Self::load_colormap_sample("textures/colormap/grass.png")?;
-        let foliage_color = Self::load_colormap_sample("textures/colormap/foliage.png")?;
+        let grass_color = Self::load_colormap_sample("colormap/grass.png")?;
+        let foliage_color = Self::load_colormap_sample("colormap/foliage.png")?;
 
         let texture_id = unsafe {
             let mut texture = 0;
@@ -133,7 +155,9 @@ impl TextureAtlas {
     }
 
     fn load_colormap_sample(path: &str) -> Result<[f32; 3], String> {
-        let img = image::open(path).map_err(|e| format!("Failed to load {}: {}", path, e))?;
+        let full_path = get_texture_path(path);
+        let img = image::open(&full_path)
+            .map_err(|e| format!("Failed to load {}: {}", full_path.display(), e))?;
         let img = img.to_rgba8();
         let (width, height) = img.dimensions();
 

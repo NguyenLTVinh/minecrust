@@ -77,8 +77,10 @@ impl Chunk {
 
                 if actual_surface >= water_level && actual_surface < CHUNK_HEIGHT - 8 {
                     if chunk.get_block(x, actual_surface, z) == BlockType::Grass {
-                        let tree_check = ((world_x * 374761393 + world_z * 668265263) as u32 % 1000)
-                            as f32
+                        let tree_check = ((world_x as u32)
+                            .wrapping_mul(374761393)
+                            .wrapping_add((world_z as u32).wrapping_mul(668265263))
+                            % 1000) as f32
                             / 1000.0;
                         if tree_check > 0.98 {
                             if tree_generator.can_place_tree(world_x, world_z) {

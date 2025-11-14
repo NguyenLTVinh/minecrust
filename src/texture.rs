@@ -85,9 +85,10 @@ impl TextureAtlas {
         let water_still = load_texture_or_fallback("block/water_still.png");
         let snow = load_texture_or_fallback("block/snow.png");
         let grass_snow = load_texture_or_fallback("block/grass_block_snow.png");
+        let sand = load_texture_or_fallback("block/sand.png");
 
-        let atlas_width = TEXTURE_SIZE * 3;
-        let atlas_height = TEXTURE_SIZE * 4;
+        let atlas_width = TEXTURE_SIZE * 4;
+        let atlas_height = TEXTURE_SIZE * 3;
         let mut atlas = RgbaImage::new(atlas_width, atlas_height);
 
         let textures = vec![
@@ -101,11 +102,12 @@ impl TextureAtlas {
             water_still,
             snow,
             grass_snow,
+            sand,
         ];
         for (i, tex) in textures.iter().enumerate() {
             let tex = tex.to_rgba8();
-            let row = i / 3;
-            let col = i % 3;
+            let row = i / 4;
+            let col = i % 4;
             let x_offset = col as u32 * TEXTURE_SIZE;
             let y_offset = row as u32 * TEXTURE_SIZE;
 
@@ -193,6 +195,7 @@ impl TextureAtlas {
             BlockType::Leaves => 6,
             BlockType::Water => 7,
             BlockType::Snow | BlockType::SnowLayer => 8,
+            BlockType::Sand => 10,
             BlockType::Air => 0,
         };
         TextureCoords::new(index, self.atlas_width, self.atlas_height)

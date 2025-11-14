@@ -1,159 +1,192 @@
+use crate::biome::{Biome, BiomeManager};
 use noise::{Fbm, NoiseFn, Perlin};
 
-pub struct TerrainGenerator {
+pub struct MapGenerator {
+    pub seed: u32,
+    pub water_level: i32,
+    pub mount_zero_level: i32,
+
     terrain_base: Fbm<Perlin>,
     terrain_alt: Fbm<Perlin>,
+    terrain_persist: Fbm<Perlin>,
     height_select: Fbm<Perlin>,
-    mountain_height: Fbm<Perlin>,
-    mountain_3d: Fbm<Perlin>,
-    valley_depth: Fbm<Perlin>,
-    valley_profile: Fbm<Perlin>,
-    river_noise: Fbm<Perlin>,
-    water_level: i32,
-    mountain_zero_level: i32,
+    filler_depth: Fbm<Perlin>,
+    mount_height: Fbm<Perlin>,
+    mountain: Fbm<Perlin>,
+    ridge: Fbm<Perlin>,
+    ridge_uwater: Fbm<Perlin>,
+
+    heat: Fbm<Perlin>,
+    heat_blend: Fbm<Perlin>,
+    humidity: Fbm<Perlin>,
+    humidity_blend: Fbm<Perlin>,
+
+    biome_manager: BiomeManager,
 }
 
-impl TerrainGenerator {
+impl MapGenerator {
     pub fn new(seed: u32) -> Self {
-        let mut terrain_base = Fbm::<Perlin>::new(seed);
-        terrain_base.octaves = 4;
-        terrain_base.frequency = 1.0 / 800.0;
+        let mut terrain_base = Fbm::new(seed);
+        terrain_base.frequency = 1.0 / 600.0;
         terrain_base.lacunarity = 2.0;
-        terrain_base.persistence = 0.5;
+        terrain_base.persistence = 0.6;
+        terrain_base.octaves = 5;
 
-        let mut terrain_alt = Fbm::<Perlin>::new(seed + 1);
-        terrain_alt.octaves = 4;
-        terrain_alt.frequency = 1.0 / 800.0;
+        let mut terrain_alt = Fbm::new(seed.wrapping_add(1));
+        terrain_alt.frequency = 1.0 / 600.0;
         terrain_alt.lacunarity = 2.0;
-        terrain_alt.persistence = 0.5;
+        terrain_alt.persistence = 0.6;
+        terrain_alt.octaves = 5;
 
-        let mut height_select = Fbm::<Perlin>::new(seed + 2);
-        height_select.octaves = 4;
-        height_select.frequency = 1.0 / 600.0;
+        let mut terrain_persist = Fbm::new(seed.wrapping_add(2));
+        terrain_persist.frequency = 1.0 / 2000.0;
+        terrain_persist.lacunarity = 2.0;
+        terrain_persist.persistence = 0.6;
+        terrain_persist.octaves = 3;
+
+        let mut height_select = Fbm::new(seed.wrapping_add(3));
+        height_select.frequency = 1.0 / 500.0;
         height_select.lacunarity = 2.0;
-        height_select.persistence = 0.6;
+        height_select.persistence = 0.7;
+        height_select.octaves = 6;
 
-        let mut mountain_height = Fbm::<Perlin>::new(seed + 3);
-        mountain_height.octaves = 2;
-        mountain_height.frequency = 1.0 / 1200.0;
-        mountain_height.lacunarity = 2.0;
-        mountain_height.persistence = 0.5;
+        let mut filler_depth = Fbm::new(seed.wrapping_add(4));
+        filler_depth.frequency = 1.0 / 150.0;
+        filler_depth.lacunarity = 2.0;
+        filler_depth.persistence = 0.7;
+        filler_depth.octaves = 3;
 
-        let mut mountain_3d = Fbm::<Perlin>::new(seed + 4);
-        mountain_3d.octaves = 4;
-        mountain_3d.frequency = 1.0 / 350.0;
-        mountain_3d.lacunarity = 2.0;
-        mountain_3d.persistence = 0.55;
+        let mut mount_height = Fbm::new(seed.wrapping_add(5));
+        mount_height.frequency = 1.0 / 1000.0;
+        mount_height.lacunarity = 2.0;
+        mount_height.persistence = 0.3;
+        mount_height.octaves = 3;
 
-        let mut valley_depth = Fbm::<Perlin>::new(seed + 5);
-        valley_depth.octaves = 1;
-        valley_depth.frequency = 1.0 / 700.0;
-        valley_depth.lacunarity = 2.0;
-        valley_depth.persistence = 1.0;
+        let mut mountain = Fbm::new(seed.wrapping_add(6));
+        mountain.frequency = 1.0 / 250.0;
+        mountain.lacunarity = 2.0;
+        mountain.persistence = 0.3;
+        mountain.octaves = 4;
 
-        let mut valley_profile = Fbm::<Perlin>::new(seed + 6);
-        valley_profile.octaves = 1;
-        valley_profile.frequency = 1.0 / 700.0;
-        valley_profile.lacunarity = 2.0;
-        valley_profile.persistence = 1.0;
+        let mut ridge = Fbm::new(seed.wrapping_add(7));
+        ridge.frequency = 1.0 / 100.0;
+        ridge.lacunarity = 2.0;
+        ridge.persistence = 0.75;
+        ridge.octaves = 4;
 
-        let mut river_noise = Fbm::<Perlin>::new(seed + 7);
-        river_noise.octaves = 3;
-        river_noise.frequency = 1.0 / 400.0;
-        river_noise.lacunarity = 2.0;
-        river_noise.persistence = 0.5;
+        let mut ridge_uwater = Fbm::new(seed.wrapping_add(8));
+        ridge_uwater.frequency = 1.0 / 1000.0;
+        ridge_uwater.lacunarity = 2.0;
+        ridge_uwater.persistence = 0.6;
+        ridge_uwater.octaves = 5;
 
-        TerrainGenerator {
+        let mut heat = Fbm::new(seed.wrapping_add(9));
+        heat.frequency = 1.0 / 1000.0;
+        heat.lacunarity = 2.0;
+        heat.persistence = 0.5;
+        heat.octaves = 3;
+
+        let mut heat_blend = Fbm::new(seed.wrapping_add(10));
+        heat_blend.frequency = 1.0 / 8.0;
+        heat_blend.lacunarity = 2.0;
+        heat_blend.persistence = 1.0;
+        heat_blend.octaves = 2;
+
+        let mut humidity = Fbm::new(seed.wrapping_add(11));
+        humidity.frequency = 1.0 / 1000.0;
+        humidity.lacunarity = 2.0;
+        humidity.persistence = 0.5;
+        humidity.octaves = 3;
+
+        let mut humidity_blend = Fbm::new(seed.wrapping_add(12));
+        humidity_blend.frequency = 1.0 / 8.0;
+        humidity_blend.lacunarity = 2.0;
+        humidity_blend.persistence = 1.0;
+        humidity_blend.octaves = 2;
+
+        MapGenerator {
+            seed,
+            water_level: 1,
+            mount_zero_level: 45,
+
             terrain_base,
             terrain_alt,
+            terrain_persist,
             height_select,
-            mountain_height,
-            mountain_3d,
-            valley_depth,
-            valley_profile,
-            river_noise,
-            water_level: 32,
-            mountain_zero_level: 45,
+            filler_depth,
+            mount_height,
+            mountain,
+            ridge,
+            ridge_uwater,
+
+            heat,
+            heat_blend,
+            humidity,
+            humidity_blend,
+
+            biome_manager: BiomeManager::new(),
         }
     }
 
-    fn get_base_terrain_height(&self, x: f64, z: f64) -> f64 {
-        let h_select = self.height_select.get([x, z]);
-        let h_select = (h_select * 0.5 + 0.5).clamp(0.0, 1.0);
+    pub fn get_water_level(&self) -> i32 {
+        self.water_level
+    }
 
-        let height_base = self.terrain_base.get([x, z]) * 35.0 + 8.0;
-        let height_alt = self.terrain_alt.get([x, z]) * 15.0 + 8.0;
+    fn base_terrain_level(&self, x: f64, z: f64) -> f32 {
+        let hselect = self.height_select.get([x, z]);
+        let hselect = (hselect * 0.5 + 0.5).max(0.0).min(1.0) as f32;
 
-        let height = if height_alt > height_base {
-            height_alt
+        let persist = self.terrain_persist.get([x, z]) as f32;
+
+        let height_base = (self.terrain_base.get([x, z]) as f32) * 70.0 * persist.max(0.1);
+        let height_alt = (self.terrain_alt.get([x, z]) as f32) * 25.0 * persist.max(0.1);
+
+        if height_alt > height_base {
+            height_alt + 4.0
         } else {
-            height_base * h_select + height_alt * (1.0 - h_select)
-        };
-
-        height
+            (height_base * hselect) + (height_alt * (1.0 - hselect)) + 4.0
+        }
     }
 
-    fn get_valley_terrain(&self, x: f64, z: f64) -> (f64, f64, f64) {
-        let n_valley = self.valley_depth.get([x, z]) * 2.0 + 3.0;
-        let n_valley_profile = self.valley_profile.get([x, z]) * 0.3 + 0.5;
-        let n_rivers = self.river_noise.get([x, z]);
+    fn get_mountain_terrain(&self, x: f64, y: f64, z: f64) -> bool {
+        let mnt_h = ((self.mount_height.get([x, z]) as f32) * 112.0 + 112.0).max(1.0);
 
-        let valley_d = n_valley * n_valley * 0.3;
-        let river = n_rivers.abs() - 0.08;
-
-        // Exponential curve models valley shape
-        let tv = (river / n_valley_profile).max(0.0);
-        let valley_h = valley_d * (1.0 - (-tv * tv).exp());
-
-        (valley_d, valley_h, n_rivers)
-    }
-
-    fn is_mountain_terrain(&self, x: f64, y: f64, z: f64) -> bool {
-        let mnt_h = (self.mountain_height.get([x, z]) * 40.0 + 80.0).max(1.0);
-
-        // Density gradient causes mountains to thin out with altitude
-        let density_gradient = -((y - self.mountain_zero_level as f64) / mnt_h);
-        let mnt_n = self.mountain_3d.get([x, y, z]) * 0.7;
+        let density_gradient = -((y as f32 - self.mount_zero_level as f32) / mnt_h);
+        let mnt_n = (self.mountain.get([x, y, z]) as f32) * 1.0;
 
         mnt_n + density_gradient >= 0.0
     }
 
-    fn is_river_channel(&self, _x: f64, _z: f64, y: f64, river_noise: f64) -> bool {
-        let river_width = 0.08;
-        let abs_river = river_noise.abs();
+    fn get_river_channel(&self, x: f64, z: f64, y: f64) -> bool {
+        let width = 0.2;
+        let uwater = self.ridge_uwater.get([x, z]);
+        let abs_uwater = uwater.abs() * 2.0;
 
-        if abs_river > river_width {
+        if abs_uwater > width {
             return false;
         }
 
-        let altitude = y - self.water_level as f64;
-        let height_mod = (altitude + 10.0) / 4.0;
-        let width_mod = river_width - abs_river;
+        let altitude = y as f32 - self.water_level as f32;
+        let height_mod = (altitude + 17.0) / 2.5;
+        let width_mod = (width - abs_uwater) as f32;
+        let nridge = (self.ridge.get([x, y, z]) as f32) * 1.0;
 
-        width_mod * height_mod >= 0.02
+        let actual_ridge = nridge * altitude.max(0.0) / 7.0;
+        actual_ridge + width_mod * height_mod >= 0.6
     }
 
     pub fn get_terrain_height(&self, world_x: i32, world_z: i32) -> i32 {
         let x = world_x as f64;
         let z = world_z as f64;
 
-        let base_height = self.get_base_terrain_height(x, z);
-        let (valley_d, valley_h, n_rivers) = self.get_valley_terrain(x, z);
+        let base_height = self.base_terrain_level(x, z);
+        let base = base_height as i32;
 
-        let base = base_height + valley_d;
-        let surface_y = base + valley_h;
-
-        let river_depth = 2.5;
-        let is_river = n_rivers.abs() < 0.08;
-
-        let final_height = if is_river {
-            let river_y = base - river_depth;
-            river_y.max(self.water_level as f64 - 2.0).min(surface_y)
+        if self.get_mountain_terrain(x, base as f64, z) {
+            base
         } else {
-            surface_y
-        };
-
-        final_height as i32
+            base.max(self.water_level)
+        }
     }
 
     pub fn is_solid_at(&self, world_x: i32, world_y: i32, world_z: i32) -> bool {
@@ -161,24 +194,14 @@ impl TerrainGenerator {
         let y = world_y as f64;
         let z = world_z as f64;
 
-        let base_height = self.get_base_terrain_height(x, z);
-        let (valley_d, valley_h, n_rivers) = self.get_valley_terrain(x, z);
+        let base_height = self.base_terrain_level(x, z);
 
-        let base = base_height + valley_d;
-        let surface_y = base + valley_h;
-
-        let in_mountain = self.is_mountain_terrain(x, y, z);
-        if in_mountain && y >= surface_y {
-            return true;
+        if y <= base_height as f64 {
+            let is_river = self.get_river_channel(x, z, y);
+            return !is_river;
         }
 
-        let is_river = if !in_mountain {
-            self.is_river_channel(x, z, y, n_rivers)
-        } else {
-            false
-        };
-
-        if y <= surface_y && !is_river {
+        if self.get_mountain_terrain(x, y, z) {
             return true;
         }
 
@@ -186,10 +209,81 @@ impl TerrainGenerator {
     }
 
     pub fn is_water_at(&self, world_x: i32, world_y: i32, world_z: i32) -> bool {
-        !self.is_solid_at(world_x, world_y, world_z) && world_y <= self.water_level
+        if world_y > self.water_level {
+            return false;
+        }
+
+        let x = world_x as f64;
+        let z = world_z as f64;
+        let y = world_y as f64;
+
+        if self.get_river_channel(x, z, y) {
+            return true;
+        }
+
+        if self.is_solid_at(world_x, world_y, world_z) {
+            return false;
+        }
+
+        world_y <= self.water_level
+    }
+
+    pub fn get_heat(&self, x: f64, z: f64) -> f32 {
+        let h = (self.heat.get([x, z]) as f32) * 50.0;
+        let hb = (self.heat_blend.get([x, z]) as f32) * 1.5;
+        h + hb + 50.0
+    }
+
+    pub fn get_humidity(&self, x: f64, z: f64) -> f32 {
+        let h = (self.humidity.get([x, z]) as f32) * 50.0;
+        let hb = (self.humidity_blend.get([x, z]) as f32) * 1.5;
+        h + hb + 50.0
+    }
+
+    pub fn get_biome_at(&self, x: f64, y: i32, z: f64) -> &Biome {
+        let heat = self.get_heat(x, z);
+        let humidity = self.get_humidity(x, z);
+        self.biome_manager.get_biome_at_pos(heat, humidity, y)
+    }
+
+    pub fn get_filler_depth(&self, x: f64, z: f64) -> i32 {
+        let depth = (self.filler_depth.get([x, z]) as f32) * 1.2;
+        (depth * 5.0).max(0.0) as i32
+    }
+}
+
+pub struct TerrainGenerator {
+    mapgen: MapGenerator,
+}
+
+impl TerrainGenerator {
+    pub fn new(seed: u32) -> Self {
+        TerrainGenerator {
+            mapgen: MapGenerator::new(seed),
+        }
+    }
+
+    pub fn get_terrain_height(&self, world_x: i32, world_z: i32) -> i32 {
+        self.mapgen.get_terrain_height(world_x, world_z)
+    }
+
+    pub fn is_solid_at(&self, world_x: i32, world_y: i32, world_z: i32) -> bool {
+        self.mapgen.is_solid_at(world_x, world_y, world_z)
+    }
+
+    pub fn is_water_at(&self, world_x: i32, world_y: i32, world_z: i32) -> bool {
+        self.mapgen.is_water_at(world_x, world_y, world_z)
     }
 
     pub fn get_water_level(&self) -> i32 {
-        self.water_level
+        self.mapgen.get_water_level()
+    }
+
+    pub fn get_biome_at(&self, x: i32, y: i32, z: i32) -> &Biome {
+        self.mapgen.get_biome_at(x as f64, y as i32, z as f64)
+    }
+
+    pub fn get_filler_depth(&self, x: i32, z: i32) -> i32 {
+        self.mapgen.get_filler_depth(x as f64, z as f64)
     }
 }

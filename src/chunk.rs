@@ -35,48 +35,55 @@ impl Chunk {
         };
 
         let water_level = terrain_gen.get_water_level();
-        const SNOW_START_ALTITUDE: i32 = 70;
-        const SNOW_FULL_ALTITUDE: i32 = 85;
 
         for x in 0..CHUNK_SIZE {
             for z in 0..CHUNK_SIZE {
                 let world_x = pos.x * CHUNK_SIZE + x;
                 let world_z = pos.z * CHUNK_SIZE + z;
 
-                let surface_height = terrain_gen.get_terrain_height(world_x, world_z);
-                let mut actual_surface = -1;
+                let _filler_depth = terrain_gen.get_filler_depth(world_x, world_z).max(0);
                 let mut depth_count = 0;
 
                 for y in (0..CHUNK_HEIGHT).rev() {
-                    let world_y = y;
                     let idx = Self::get_index(x, y, z);
+                    let biome = terrain_gen.get_biome_at(world_x, y, world_z);
 
-                    if terrain_gen.is_solid_at(world_x, world_y, world_z) {
-                        if actual_surface == -1 {
-                            actual_surface = y;
-                        }
-
+                    if terrain_gen.is_solid_at(world_x, y, world_z) {
                         depth_count += 1;
 
                         chunk.blocks[idx] = if depth_count == 1 && y >= water_level {
-                            BlockType::Grass
-                        } else if depth_count <= 5 {
-                            BlockType::Dirt
+                            biome.c_top
+                        } else if depth_count <= biome.depth_top + biome.depth_filler {
+                            biome.c_filler
                         } else {
-                            BlockType::Stone
+                            biome.c_stone
                         };
-                    } else if terrain_gen.is_water_at(world_x, world_y, world_z) {
-                        chunk.blocks[idx] = BlockType::Water;
+                    } else if terrain_gen.is_water_at(world_x, y, world_z) {
+                        chunk.blocks[idx] = biome.c_water;
                         depth_count = 0;
                     }
                 }
+            }
+        }
 
-                if actual_surface == -1 {
-                    actual_surface = surface_height;
+        for x in 0..CHUNK_SIZE {
+            for z in 0..CHUNK_SIZE {
+                let world_x = pos.x * CHUNK_SIZE + x;
+                let world_z = pos.z * CHUNK_SIZE + z;
+
+                let _surface_height = terrain_gen.get_terrain_height(world_x, world_z);
+                let mut actual_surface = -1;
+
+                for y in (0..CHUNK_HEIGHT).rev() {
+                    if chunk.get_block(x, y, z) != BlockType::Air {
+                        actual_surface = y;
+                        break;
+                    }
                 }
 
                 if actual_surface >= water_level && actual_surface < CHUNK_HEIGHT - 8 {
-                    if chunk.get_block(x, actual_surface, z) == BlockType::Grass {
+                    let block = chunk.get_block(x, actual_surface, z);
+                    if matches!(block, BlockType::Grass | BlockType::Dirt) {
                         let tree_check = ((world_x as u32)
                             .wrapping_mul(374761393)
                             .wrapping_add((world_z as u32).wrapping_mul(668265263))
@@ -94,7 +101,29 @@ impl Chunk {
             }
         }
 
-        generate_snow(&mut chunk, SNOW_START_ALTITUDE, SNOW_FULL_ALTITUDE);
+        for x in 0..CHUNK_SIZE {
+            for z in 0..CHUNK_SIZE {
+                for y in (0..CHUNK_HEIGHT).rev() {
+                    let block = chunk.get_block(x, y, z);
+
+                    if block == BlockType::Air || block == BlockType::Water {
+                        continue;
+                    }
+
+                    if matches!(block, BlockType::GrassSnowy | BlockType::Snow) {
+                        let snow_y = y + 1;
+                        if snow_y < CHUNK_HEIGHT && chunk.get_block(x, snow_y, z) == BlockType::Air
+                        {
+                            chunk.set_block(x, snow_y, z, BlockType::SnowLayer);
+                        }
+                    }
+
+                    break;
+                }
+            }
+        }
+
+        generate_snow(&mut chunk, 80, 95);
 
         chunk
     }

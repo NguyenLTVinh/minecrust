@@ -22,7 +22,7 @@ fn create_fallback_texture() -> DynamicImage {
     DynamicImage::ImageRgba8(img)
 }
 
-fn load_texture_or_fallback(relative_path: &str) -> DynamicImage {
+fn load_texture(relative_path: &str) -> DynamicImage {
     let full_path = get_texture_path(relative_path);
     match image::open(&full_path) {
         Ok(img) => img,
@@ -75,20 +75,26 @@ pub struct TextureAtlas {
 
 impl TextureAtlas {
     pub fn new() -> Result<Self, String> {
-        let stone = load_texture_or_fallback("block/stone.png");
-        let dirt = load_texture_or_fallback("block/dirt.png");
-        let grass_side = load_texture_or_fallback("block/grass_block_side.png");
-        let grass_top = load_texture_or_fallback("block/grass_block_top.png");
-        let oak_log = load_texture_or_fallback("block/oak_log.png");
-        let oak_log_top = load_texture_or_fallback("block/oak_log_top.png");
-        let oak_leaves = load_texture_or_fallback("block/oak_leaves.png");
-        let water_still = load_texture_or_fallback("block/water_still.png");
-        let snow = load_texture_or_fallback("block/snow.png");
-        let grass_snow = load_texture_or_fallback("block/grass_block_snow.png");
-        let sand = load_texture_or_fallback("block/sand.png");
+        let stone = load_texture("block/stone.png");
+        let dirt = load_texture("block/dirt.png");
+        let grass_side = load_texture("block/grass_block_side.png");
+        let grass_top = load_texture("block/grass_block_top.png");
+        let oak_log = load_texture("block/oak_log.png");
+        let oak_log_top = load_texture("block/oak_log_top.png");
+        let oak_leaves = load_texture("block/oak_leaves.png");
+        let water_still = load_texture("block/water_still.png");
+        let snow = load_texture("block/snow.png");
+        let grass_snow = load_texture("block/grass_block_snow.png");
+        let sand = load_texture("block/sand.png");
+        let spruce_log = load_texture("block/spruce_log.png");
+        let spruce_log_top = load_texture("block/spruce_log_top.png");
+        let spruce_leaves = load_texture("block/spruce_leaves.png");
+        let birch_log = load_texture("block/birch_log.png");
+        let birch_log_top = load_texture("block/birch_log_top.png");
+        let birch_leaves = load_texture("block/birch_leaves.png");
 
-        let atlas_width = TEXTURE_SIZE * 4;
-        let atlas_height = TEXTURE_SIZE * 3;
+        let atlas_width = TEXTURE_SIZE * 5;
+        let atlas_height = TEXTURE_SIZE * 4;
         let mut atlas = RgbaImage::new(atlas_width, atlas_height);
 
         let textures = vec![
@@ -103,11 +109,17 @@ impl TextureAtlas {
             snow,
             grass_snow,
             sand,
+            spruce_log,
+            spruce_log_top,
+            spruce_leaves,
+            birch_log,
+            birch_log_top,
+            birch_leaves,
         ];
         for (i, tex) in textures.iter().enumerate() {
             let tex = tex.to_rgba8();
-            let row = i / 4;
-            let col = i % 4;
+            let row = i / 5;
+            let col = i % 5;
             let x_offset = col as u32 * TEXTURE_SIZE;
             let y_offset = row as u32 * TEXTURE_SIZE;
 
@@ -188,14 +200,24 @@ impl TextureAtlas {
                 FaceDirection::Bottom => 1,
                 _ => 9,
             },
-            BlockType::Wood => match face {
+            BlockType::OakLog => match face {
                 FaceDirection::Top | FaceDirection::Bottom => 5,
                 _ => 4,
             },
-            BlockType::Leaves => 6,
+            BlockType::OakLeaves => 6,
             BlockType::Water => 7,
             BlockType::Snow | BlockType::SnowLayer => 8,
             BlockType::Sand => 10,
+            BlockType::SpruceLog => match face {
+                FaceDirection::Top | FaceDirection::Bottom => 12,
+                _ => 11,
+            },
+            BlockType::SpruceLeaves => 13,
+            BlockType::BirchLog => match face {
+                FaceDirection::Top | FaceDirection::Bottom => 15,
+                _ => 14,
+            },
+            BlockType::BirchLeaves => 16,
             BlockType::Air => 0,
         };
         TextureCoords::new(index, self.atlas_width, self.atlas_height)
@@ -203,8 +225,10 @@ impl TextureAtlas {
 
     pub fn get_tint(&self, block: BlockType) -> [f32; 3] {
         match block {
-            BlockType::Grass | BlockType::GrassSnowy => self.grass_color,
-            BlockType::Leaves => self.foliage_color,
+            BlockType::Grass => self.grass_color,
+            BlockType::OakLeaves | BlockType::SpruceLeaves | BlockType::BirchLeaves => {
+                self.foliage_color
+            }
             BlockType::Water => [0.25, 0.5, 0.9],
             _ => [1.0, 1.0, 1.0],
         }

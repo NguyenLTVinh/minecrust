@@ -1,5 +1,5 @@
 use crate::block::{BlockType, FaceDirection};
-use crate::decoration::{TreeGenerator, add_snow_layer, generate_snow, generate_tree};
+use crate::decoration::{TreeGenerator, TreeType, add_snow_layer, generate_snow, generate_tree};
 use crate::terrain::TerrainGenerator;
 use crate::texture::{TextureAtlas, TextureCoords};
 use gl::types::*;
@@ -8,7 +8,7 @@ use std::ptr;
 
 pub const CHUNK_SIZE: i32 = 16;
 pub const CHUNK_HEIGHT: i32 = 160;
-pub const RENDER_DISTANCE: i32 = 10;
+pub const RENDER_DISTANCE: i32 = 16;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ChunkPos {
@@ -83,7 +83,10 @@ impl Chunk {
 
                 if actual_surface >= water_level && actual_surface < CHUNK_HEIGHT - 8 {
                     let block = chunk.get_block(x, actual_surface, z);
-                    if matches!(block, BlockType::Grass | BlockType::Dirt) {
+                    if matches!(
+                        block,
+                        BlockType::Grass | BlockType::GrassSnowy | BlockType::Dirt
+                    ) {
                         let tree_check = ((world_x as u32)
                             .wrapping_mul(374761393)
                             .wrapping_add((world_z as u32).wrapping_mul(668265263))
@@ -91,9 +94,29 @@ impl Chunk {
                             / 1000.0;
                         if tree_check > 0.98 {
                             if tree_generator.can_place_tree(world_x, world_z) {
-                                let trunk_height = 4 + ((world_x.abs() + world_z.abs()) % 3) as i32;
-                                generate_tree(&mut chunk, x, actual_surface, z, trunk_height);
-                                tree_generator.register_tree(world_x, world_z);
+                                let biome =
+                                    terrain_gen.get_biome_at(world_x, actual_surface, world_z);
+                                let tree_type = if biome.name == "taiga" {
+                                    TreeType::Spruce
+                                } else if biome.name == "forest" {
+                                    TreeType::Birch
+                                } else {
+                                    TreeType::Oak
+                                };
+                                let seed = (world_x as u32)
+                                    .wrapping_mul(374761393)
+                                    .wrapping_add((world_z as u32).wrapping_mul(668265263));
+                                let tree_placed = generate_tree(
+                                    &mut chunk,
+                                    x,
+                                    actual_surface + 1,
+                                    z,
+                                    seed,
+                                    tree_type,
+                                );
+                                if tree_placed {
+                                    tree_generator.register_tree(world_x, world_z);
+                                }
                             }
                         }
                     }

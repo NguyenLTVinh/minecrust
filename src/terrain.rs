@@ -1,6 +1,9 @@
 use crate::biome::{Biome, BiomeManager};
 use noise::{Fbm, NoiseFn, Perlin};
 
+const CHUNK_HEIGHT: i32 = 160;
+const MAX_MOUNTAIN_HEIGHT: i32 = CHUNK_HEIGHT - 10;
+
 pub struct MapGenerator {
     pub seed: u32,
     pub water_level: i32,
@@ -66,7 +69,7 @@ impl MapGenerator {
         mountain.frequency = 1.0 / 250.0;
         mountain.lacunarity = 2.0;
         mountain.persistence = 0.3;
-        mountain.octaves = 4;
+        mountain.octaves = 3;
 
         let mut ridge = Fbm::new(seed.wrapping_add(7));
         ridge.frequency = 1.0 / 100.0;
@@ -107,7 +110,7 @@ impl MapGenerator {
         MapGenerator {
             seed,
             water_level: 1,
-            mount_zero_level: 45,
+            mount_zero_level: 35,
 
             terrain_base,
             terrain_alt,
@@ -149,9 +152,16 @@ impl MapGenerator {
     }
 
     fn get_mountain_terrain(&self, x: f64, y: f64, z: f64) -> bool {
-        let mnt_h = ((self.mount_height.get([x, z]) as f32) * 112.0 + 112.0).max(1.0);
+        if y as i32 >= MAX_MOUNTAIN_HEIGHT {
+            return false;
+        }
 
-        let density_gradient = -((y as f32 - self.mount_zero_level as f32) / mnt_h);
+        let mnt_h = ((self.mount_height.get([x, z]) as f32) * 60.0 + 60.0).max(1.0);
+
+        let max_height = (MAX_MOUNTAIN_HEIGHT - self.mount_zero_level) as f32;
+        let clamped_mnt_h = mnt_h.min(max_height);
+
+        let density_gradient = -((y as f32 - self.mount_zero_level as f32) / clamped_mnt_h);
         let mnt_n = (self.mountain.get([x, y, z]) as f32) * 1.0;
 
         mnt_n + density_gradient >= 0.0
@@ -190,6 +200,10 @@ impl MapGenerator {
     }
 
     pub fn is_solid_at(&self, world_x: i32, world_y: i32, world_z: i32) -> bool {
+        if world_y >= CHUNK_HEIGHT {
+            return false;
+        }
+
         let x = world_x as f64;
         let y = world_y as f64;
         let z = world_z as f64;
@@ -209,7 +223,7 @@ impl MapGenerator {
     }
 
     pub fn is_water_at(&self, world_x: i32, world_y: i32, world_z: i32) -> bool {
-        if world_y > self.water_level {
+        if world_y > self.water_level || world_y >= CHUNK_HEIGHT {
             return false;
         }
 

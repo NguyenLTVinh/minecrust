@@ -34,30 +34,330 @@ impl TreeGenerator {
     }
 }
 
-pub fn generate_tree(chunk: &mut Chunk, x: i32, base_y: i32, z: i32, trunk_height: i32) {
-    let leaf_radius = 2;
+pub enum TreeType {
+    Oak,
+    Spruce,
+    Birch,
+}
 
-    for y in base_y..(base_y + trunk_height) {
-        chunk.set_block(x, y, z, BlockType::Wood);
+pub fn generate_tree(
+    chunk: &mut Chunk,
+    x: i32,
+    base_y: i32,
+    z: i32,
+    seed: u32,
+    tree_type: TreeType,
+) -> bool {
+    match tree_type {
+        TreeType::Oak => generate_oak_tree(chunk, x, base_y, z, seed),
+        TreeType::Spruce => generate_spruce_tree(chunk, x, base_y, z, seed),
+        TreeType::Birch => generate_birch_tree(chunk, x, base_y, z, seed),
+    }
+}
+
+fn generate_oak_tree(chunk: &mut Chunk, x: i32, base_y: i32, z: i32, seed: u32) -> bool {
+    let trunk_height = 4 + ((seed % 2) as i32);
+
+    for i in 0..trunk_height {
+        let check_y = base_y + i;
+        let current_block = chunk.get_block(x, check_y, z);
+        if current_block != BlockType::Air && !current_block.is_transparent() {
+            return false;
+        }
     }
 
-    let leaf_start = base_y + trunk_height - 2;
-    for dy in 0..4 {
-        let y = leaf_start + dy;
-        let radius = if dy == 3 { 1 } else { leaf_radius };
+    let mut leaves_buffer = vec![vec![vec![0u8; 5]; 4]; 5];
+    let d = 1;
+    for lz in 0..=2 {
+        for ly in 0..=2 {
+            for lx in 0..=2 {
+                leaves_buffer[lx + 1][ly + 1][lz + 1] = 1;
+            }
+        }
+    }
 
-        for dx in -radius..=radius {
-            for dz in -radius..=radius {
-                let dist = (dx * dx + dz * dz) as f32;
-                if dist <= (radius * radius) as f32 {
-                    let block = chunk.get_block(x + dx, y, z + dz);
-                    if block == BlockType::Air {
-                        chunk.set_block(x + dx, y, z + dz, BlockType::Leaves);
+    let rng_val = seed.wrapping_mul(1664525).wrapping_add(1013904223);
+    for i in 0..7 {
+        let px = ((rng_val.wrapping_add(i * 3)) % 3) as usize;
+        let py = ((rng_val.wrapping_add(i * 5)) % 3) as usize;
+        let pz = ((rng_val.wrapping_add(i * 7)) % 3) as usize;
+
+        for dz in 0..=d {
+            for dy in 0..=d {
+                for dx in 0..=d {
+                    let lx = px + dx;
+                    let ly = py + dy;
+                    let lz = pz + dz;
+                    if lx < 5 && ly < 4 && lz < 5 {
+                        leaves_buffer[lx][ly][lz] = 1;
                     }
                 }
             }
         }
     }
+
+    let p_y = base_y + trunk_height - 1;
+    for lz in 0..5 {
+        for ly in 0..4 {
+            for lx in 0..5 {
+                if leaves_buffer[lx][ly][lz] == 1 {
+                    let world_x = x + lx as i32 - 2;
+                    let world_y = p_y + ly as i32 - 1;
+                    let world_z = z + lz as i32 - 2;
+
+                    let current_block = chunk.get_block(world_x, world_y, world_z);
+                    if current_block != BlockType::Air && !current_block.is_transparent() {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+
+    let mut p_y = base_y;
+    for _ in 0..trunk_height {
+        chunk.set_block(x, p_y, z, BlockType::OakLog);
+        p_y += 1;
+    }
+
+    p_y -= 1;
+
+    for lz in 0..5 {
+        for ly in 0..4 {
+            for lx in 0..5 {
+                if leaves_buffer[lx][ly][lz] == 1 {
+                    let world_x = x + lx as i32 - 2;
+                    let world_y = p_y + ly as i32 - 1;
+                    let world_z = z + lz as i32 - 2;
+
+                    let current_block = chunk.get_block(world_x, world_y, world_z);
+                    if current_block == BlockType::Air || current_block == BlockType::SnowLayer {
+                        chunk.set_block(world_x, world_y, world_z, BlockType::OakLeaves);
+                    }
+                }
+            }
+        }
+    }
+
+    true
+}
+
+fn generate_birch_tree(chunk: &mut Chunk, x: i32, base_y: i32, z: i32, seed: u32) -> bool {
+    let trunk_height = 4 + ((seed % 2) as i32);
+
+    for i in 0..trunk_height {
+        let check_y = base_y + i;
+        let current_block = chunk.get_block(x, check_y, z);
+        if current_block != BlockType::Air && !current_block.is_transparent() {
+            return false;
+        }
+    }
+
+    let mut leaves_buffer = vec![vec![vec![0u8; 5]; 4]; 5];
+    let d = 1;
+    for lz in 0..=2 {
+        for ly in 0..=2 {
+            for lx in 0..=2 {
+                leaves_buffer[lx + 1][ly + 1][lz + 1] = 1;
+            }
+        }
+    }
+
+    let rng_val = seed.wrapping_mul(1664525).wrapping_add(1013904223);
+    for i in 0..7 {
+        let px = ((rng_val.wrapping_add(i * 3)) % 3) as usize;
+        let py = ((rng_val.wrapping_add(i * 5)) % 3) as usize;
+        let pz = ((rng_val.wrapping_add(i * 7)) % 3) as usize;
+
+        for dz in 0..=d {
+            for dy in 0..=d {
+                for dx in 0..=d {
+                    let lx = px + dx;
+                    let ly = py + dy;
+                    let lz = pz + dz;
+                    if lx < 5 && ly < 4 && lz < 5 {
+                        leaves_buffer[lx][ly][lz] = 1;
+                    }
+                }
+            }
+        }
+    }
+
+    let p_y = base_y + trunk_height - 1;
+    for lz in 0..5 {
+        for ly in 0..4 {
+            for lx in 0..5 {
+                if leaves_buffer[lx][ly][lz] == 1 {
+                    let world_x = x + lx as i32 - 2;
+                    let world_y = p_y + ly as i32 - 1;
+                    let world_z = z + lz as i32 - 2;
+
+                    let current_block = chunk.get_block(world_x, world_y, world_z);
+                    if current_block != BlockType::Air && !current_block.is_transparent() {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+
+    let mut p_y = base_y;
+    for _ in 0..trunk_height {
+        chunk.set_block(x, p_y, z, BlockType::BirchLog);
+        p_y += 1;
+    }
+
+    p_y -= 1;
+
+    for lz in 0..5 {
+        for ly in 0..4 {
+            for lx in 0..5 {
+                if leaves_buffer[lx][ly][lz] == 1 {
+                    let world_x = x + lx as i32 - 2;
+                    let world_y = p_y + ly as i32 - 1;
+                    let world_z = z + lz as i32 - 2;
+
+                    let current_block = chunk.get_block(world_x, world_y, world_z);
+                    if current_block == BlockType::Air || current_block == BlockType::SnowLayer {
+                        chunk.set_block(world_x, world_y, world_z, BlockType::BirchLeaves);
+                    }
+                }
+            }
+        }
+    }
+
+    true
+}
+
+fn generate_spruce_tree(chunk: &mut Chunk, x: i32, base_y: i32, z: i32, seed: u32) -> bool {
+    let trunk_height = 9 + ((seed % 5) as i32);
+
+    for i in 0..trunk_height {
+        let check_y = base_y + i;
+        let current_block = chunk.get_block(x, check_y, z);
+        if current_block != BlockType::Air && !current_block.is_transparent() {
+            return false;
+        }
+    }
+
+    let mut leaves_buffer = vec![vec![vec![0u8; 7]; 10]; 7];
+    let mut dev = 3;
+    let rng = seed.wrapping_mul(1664525).wrapping_add(1013904223);
+
+    for yy in 0..=2 {
+        for zz in 0..=6 {
+            for xx in 0..=6 {
+                let dist_x = (xx as i32 - 3).abs();
+                let dist_z = (zz as i32 - 3).abs();
+                if dist_x <= dev && dist_z <= dev {
+                    let rand_val = ((rng.wrapping_add((xx + zz * 7 + yy * 49) as u32)) % 20) as i32;
+                    if rand_val <= 19 - dev {
+                        leaves_buffer[xx][yy][zz] = 1;
+                        leaves_buffer[xx][yy + 1][zz] = 2;
+                    }
+                }
+            }
+        }
+        dev -= 1;
+    }
+
+    leaves_buffer[3][1][3] = 1;
+    leaves_buffer[3][2][3] = 1;
+    leaves_buffer[3][3][3] = 2;
+
+    let mut my = 0;
+    for iii in 0..20 {
+        let xi = ((rng.wrapping_add(iii * 11)) % 4) as usize;
+        let yy = 4 + ((rng.wrapping_add(iii * 13)) % 2) as usize;
+        let zi = ((rng.wrapping_add(iii * 17)) % 4) as usize;
+        if yy > my {
+            my = yy;
+        }
+        for zz in zi..=(zi + 1).min(6) {
+            for xx in xi..=(xi + 1).min(6) {
+                if yy < 10 && zz < 7 && xx < 7 {
+                    leaves_buffer[xx][yy][zz] = 1;
+                    if yy + 1 < 10 && leaves_buffer[xx][yy + 1][zz] == 0 {
+                        leaves_buffer[xx][yy + 1][zz] = 2;
+                    }
+                }
+            }
+        }
+    }
+
+    dev = 2;
+    for yy in (my + 1)..=(my + 2).min(9) {
+        for zz in 0..=6 {
+            for xx in 0..=6 {
+                let dist_x = (xx as i32 - 3).abs();
+                let dist_z = (zz as i32 - 3).abs();
+                if dist_x <= dev && dist_z <= dev {
+                    let rand_val = ((rng.wrapping_add((xx + zz * 7 + yy * 49) as u32)) % 20) as i32;
+                    if rand_val <= 19 - dev {
+                        leaves_buffer[xx][yy][zz] = 1;
+                        if yy + 1 < 10 {
+                            leaves_buffer[xx][yy + 1][zz] = 2;
+                        }
+                    }
+                }
+            }
+        }
+        dev -= 1;
+    }
+
+    let p_y = base_y + trunk_height - 1;
+    for lz in 0..7 {
+        for ly in 0..10 {
+            for lx in 0..7 {
+                if leaves_buffer[lx][ly][lz] != 0 {
+                    let world_x = x + lx as i32 - 3;
+                    let world_y = p_y + ly as i32 - 6;
+                    let world_z = z + lz as i32 - 3;
+
+                    let current_block = chunk.get_block(world_x, world_y, world_z);
+                    if current_block != BlockType::Air && !current_block.is_transparent() {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+
+    let mut p_y = base_y;
+    for _ in 0..trunk_height {
+        chunk.set_block(x, p_y, z, BlockType::SpruceLog);
+        p_y += 1;
+    }
+
+    p_y -= 1;
+
+    for lz in 0..7 {
+        for ly in 0..10 {
+            for lx in 0..7 {
+                if leaves_buffer[lx][ly][lz] == 1 {
+                    let world_x = x + lx as i32 - 3;
+                    let world_y = p_y + ly as i32 - 6;
+                    let world_z = z + lz as i32 - 3;
+
+                    let current_block = chunk.get_block(world_x, world_y, world_z);
+                    if current_block == BlockType::Air || current_block == BlockType::SnowLayer {
+                        chunk.set_block(world_x, world_y, world_z, BlockType::SpruceLeaves);
+                    }
+                } else if leaves_buffer[lx][ly][lz] == 2 {
+                    let world_x = x + lx as i32 - 3;
+                    let world_y = p_y + ly as i32 - 6;
+                    let world_z = z + lz as i32 - 3;
+
+                    let current_block = chunk.get_block(world_x, world_y, world_z);
+                    if current_block == BlockType::Air || current_block == BlockType::SnowLayer {
+                        chunk.set_block(world_x, world_y, world_z, BlockType::SnowLayer);
+                    }
+                }
+            }
+        }
+    }
+
+    true
 }
 
 pub fn generate_snow(chunk: &mut Chunk, snow_start_altitude: i32, snow_full_altitude: i32) {
@@ -107,7 +407,7 @@ pub fn generate_snow(chunk: &mut Chunk, snow_start_altitude: i32, snow_full_alti
                                 chunk.set_block(x, snow_y, z, BlockType::SnowLayer);
                             }
                         }
-                        BlockType::Leaves => {
+                        BlockType::OakLeaves => {
                             if adjusted_factor > 0.7 {
                                 let snow_y = y + 1;
                                 if snow_y < CHUNK_HEIGHT

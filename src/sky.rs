@@ -33,11 +33,9 @@ impl Sky {
         #[rustfmt::skip]
         let vertices: [f32; 18] = [
             // Two triangles forming a quad at origin
-            // Triangle 1
             -1.0, -1.0, 0.0,
              1.0, -1.0, 0.0,
              1.0,  1.0, 0.0,
-            // Triangle 2
             -1.0, -1.0, 0.0,
              1.0,  1.0, 0.0,
             -1.0,  1.0, 0.0,

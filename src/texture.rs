@@ -103,9 +103,16 @@ impl TextureAtlas {
         let pink_tulip = load_texture("block/pink_tulip.png");
         let short_dry_grass = load_texture("block/short_dry_grass.png");
         let tall_grass_bottom = load_texture("block/tall_grass_bottom.png");
+        let podzol_top = load_texture("block/podzol_top.png");
+        let podzol_side = load_texture("block/podzol_side.png");
+        let fern = load_texture("block/fern.png");
+        let large_fern_top = load_texture("block/large_fern_top.png");
+        let large_fern_bottom = load_texture("block/large_fern_bottom.png");
+        let sweet_berry_stage1 = load_texture("block/sweet_berry_bush_stage3.png");
+        let sweet_berry_stage2 = load_texture("block/sweet_berry_bush_stage4.png");
 
-        let atlas_width = TEXTURE_SIZE * 6;
-        let atlas_height = TEXTURE_SIZE * 6;
+        let atlas_width = TEXTURE_SIZE * 8;
+        let atlas_height = TEXTURE_SIZE * 5;
         let mut atlas = RgbaImage::new(atlas_width, atlas_height);
 
         let textures = vec![
@@ -137,11 +144,18 @@ impl TextureAtlas {
             pink_tulip,
             short_dry_grass,
             tall_grass_bottom,
+            podzol_top,
+            podzol_side,
+            fern,
+            large_fern_top,
+            large_fern_bottom,
+            sweet_berry_stage1,
+            sweet_berry_stage2,
         ];
         for (i, tex) in textures.iter().enumerate() {
             let tex = tex.to_rgba8();
-            let row = i / 6;
-            let col = i % 6;
+            let row = i / 8;
+            let col = i % 8;
             let x_offset = col as u32 * TEXTURE_SIZE;
             let y_offset = row as u32 * TEXTURE_SIZE;
 
@@ -251,6 +265,16 @@ impl TextureAtlas {
             BlockType::PinkTulip => 25,
             BlockType::ShortDryGrass => 26,
             BlockType::TallGrassBottom => 27,
+            BlockType::Podzol => match face {
+                FaceDirection::Top => 28,
+                FaceDirection::Bottom => 1,
+                _ => 29,
+            },
+            BlockType::Fern => 30,
+            BlockType::LargeFernTop => 31,
+            BlockType::LargeFernBottom => 32,
+            BlockType::SweetBerryBushStage1 => 33,
+            BlockType::SweetBerryBushStage2 => 34,
             BlockType::Air => 0,
         };
         TextureCoords::new(index, self.atlas_width, self.atlas_height)
@@ -262,9 +286,12 @@ impl TextureAtlas {
             BlockType::ShortGrass | BlockType::TallGrassTop | BlockType::TallGrassBottom => {
                 self.grass_color
             }
-            BlockType::OakLeaves | BlockType::SpruceLeaves | BlockType::BirchLeaves => {
-                self.foliage_color
-            }
+            BlockType::OakLeaves
+            | BlockType::SpruceLeaves
+            | BlockType::BirchLeaves
+            | BlockType::Fern
+            | BlockType::LargeFernBottom
+            | BlockType::LargeFernTop => self.foliage_color,
             BlockType::Water => [0.25, 0.5, 0.9],
             _ => [1.0, 1.0, 1.0],
         }

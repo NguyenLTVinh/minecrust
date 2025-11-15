@@ -1,7 +1,5 @@
 use crate::block::{BlockType, FaceDirection};
-use crate::decoration::{
-    DecorationGenerator, TreeGenerator, TreeType, add_snow_layer, generate_snow, generate_tree,
-};
+use crate::decoration::{DecorationGenerator, TreeGenerator, add_snow_layer, generate_snow};
 use crate::terrain::TerrainGenerator;
 use crate::texture::{TextureAtlas, TextureCoords};
 use gl::types::*;
@@ -68,89 +66,10 @@ impl Chunk {
             }
         }
 
-        for x in 0..CHUNK_SIZE {
-            for z in 0..CHUNK_SIZE {
-                let world_x = pos.x * CHUNK_SIZE + x;
-                let world_z = pos.z * CHUNK_SIZE + z;
-
-                let _surface_height = terrain_gen.get_terrain_height(world_x, world_z);
-                let mut actual_surface = -1;
-
-                for y in (0..CHUNK_HEIGHT).rev() {
-                    if chunk.get_block(x, y, z) != BlockType::Air {
-                        actual_surface = y;
-                        break;
-                    }
-                }
-
-                if actual_surface >= water_level && actual_surface < CHUNK_HEIGHT - 8 {
-                    let block = chunk.get_block(x, actual_surface, z);
-                    if matches!(
-                        block,
-                        BlockType::Grass | BlockType::GrassSnowy | BlockType::Dirt
-                    ) {
-                        let tree_check = ((world_x as u32)
-                            .wrapping_mul(374761393)
-                            .wrapping_add((world_z as u32).wrapping_mul(668265263))
-                            % 1000) as f32
-                            / 1000.0;
-                        if tree_check > 0.98 {
-                            if tree_generator.can_place_tree(world_x, world_z) {
-                                let biome =
-                                    terrain_gen.get_biome_at(world_x, actual_surface, world_z);
-                                let tree_type = if biome.name == "taiga" {
-                                    TreeType::Spruce
-                                } else if biome.name == "forest" {
-                                    TreeType::Birch
-                                } else {
-                                    TreeType::Oak
-                                };
-                                let seed = (world_x as u32)
-                                    .wrapping_mul(374761393)
-                                    .wrapping_add((world_z as u32).wrapping_mul(668265263));
-                                let tree_placed = generate_tree(
-                                    &mut chunk,
-                                    x,
-                                    actual_surface + 1,
-                                    z,
-                                    seed,
-                                    tree_type,
-                                );
-                                if tree_placed {
-                                    tree_generator.register_tree(world_x, world_z);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        for x in 0..CHUNK_SIZE {
-            for z in 0..CHUNK_SIZE {
-                for y in (0..CHUNK_HEIGHT).rev() {
-                    let block = chunk.get_block(x, y, z);
-
-                    if block == BlockType::Air || block == BlockType::Water {
-                        continue;
-                    }
-
-                    if matches!(block, BlockType::GrassSnowy | BlockType::Snow) {
-                        let snow_y = y + 1;
-                        if snow_y < CHUNK_HEIGHT && chunk.get_block(x, snow_y, z) == BlockType::Air
-                        {
-                            chunk.set_block(x, snow_y, z, BlockType::SnowLayer);
-                        }
-                    }
-
-                    break;
-                }
-            }
-        }
-
-        generate_snow(&mut chunk, 80, 95);
-
+        TreeGenerator::generate_surface_variants(&mut chunk, terrain_gen);
+        tree_generator.spawn_trees_for_chunk(&mut chunk, terrain_gen);
         let test_biome = terrain_gen.get_biome_at(pos.x * CHUNK_SIZE, 32, pos.z * CHUNK_SIZE);
+        generate_snow(&mut chunk, 80, 95, &test_biome.name);
         DecorationGenerator::generate_decorations(&mut chunk, &test_biome.name);
 
         chunk

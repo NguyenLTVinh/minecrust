@@ -16,6 +16,8 @@ pub struct Biome {
     pub max_y: i32,
     pub vertical_blend: i32,
     pub weight: f32,
+    pub surface_variant: Option<BlockType>,
+    pub surface_variant_frequency: f32,
 }
 
 impl Biome {
@@ -49,7 +51,15 @@ impl Biome {
             max_y,
             vertical_blend,
             weight: 1.0,
+            surface_variant: None,
+            surface_variant_frequency: 0.0,
         }
+    }
+
+    pub fn with_surface_variant(mut self, variant: BlockType, frequency: f32) -> Self {
+        self.surface_variant = Some(variant);
+        self.surface_variant_frequency = frequency;
+        self
     }
 }
 
@@ -78,7 +88,7 @@ impl BiomeManager {
             50.0,
             50.0,
             0,
-            60,
+            40,
             16,
         ));
 
@@ -98,8 +108,27 @@ impl BiomeManager {
             8,
         ));
 
+        self.register(
+            Biome::new(
+                "taiga",
+                BlockType::Grass,
+                BlockType::Dirt,
+                BlockType::Stone,
+                BlockType::Water,
+                BlockType::Water,
+                1,
+                3,
+                20.0,
+                70.0,
+                0,
+                60,
+                16,
+            )
+            .with_surface_variant(BlockType::Podzol, 0.01),
+        );
+
         self.register(Biome::new(
-            "taiga",
+            "snowy_taiga",
             BlockType::GrassSnowy,
             BlockType::Dirt,
             BlockType::Stone,
@@ -107,7 +136,7 @@ impl BiomeManager {
             BlockType::Water,
             1,
             3,
-            20.0,
+            -10.0,
             70.0,
             0,
             255,
@@ -126,12 +155,12 @@ impl BiomeManager {
             -20.0,
             40.0,
             0,
-            255,
+            40,
             16,
         ));
 
         self.register(Biome::new(
-            "forest",
+            "oak_forest",
             BlockType::Grass,
             BlockType::Dirt,
             BlockType::Stone,
@@ -140,6 +169,22 @@ impl BiomeManager {
             1,
             3,
             40.0,
+            75.0,
+            0,
+            60,
+            16,
+        ));
+
+        self.register(Biome::new(
+            "birch_forest",
+            BlockType::Grass,
+            BlockType::Dirt,
+            BlockType::Stone,
+            BlockType::Water,
+            BlockType::Water,
+            1,
+            3,
+            35.0,
             80.0,
             0,
             60,

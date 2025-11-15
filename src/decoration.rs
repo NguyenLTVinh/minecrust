@@ -1,7 +1,16 @@
+use crate::biome::Biome;
 use crate::block::BlockType;
-use crate::chunk::{CHUNK_HEIGHT, CHUNK_SIZE, Chunk};
+use crate::chunk::{CHUNK_HEIGHT, CHUNK_SIZE, Chunk, ChunkPos};
+use crate::terrain::TerrainGenerator;
 use crate::texture::TextureCoords;
 use std::collections::HashSet;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FrequencyTier {
+    Frequent,
+    Moderate,
+    Rare,
+}
 
 pub struct TreeGenerator {
     tree_positions: HashSet<(i32, i32)>,
@@ -12,6 +21,14 @@ pub struct DecorationGenerator;
 impl DecorationGenerator {
     pub fn new() -> Self {
         DecorationGenerator
+    }
+
+    fn get_frequency_threshold(base_threshold: f32, tier: FrequencyTier) -> f32 {
+        match tier {
+            FrequencyTier::Frequent => base_threshold,
+            FrequencyTier::Moderate => base_threshold + (1.0 - base_threshold) * 0.5,
+            FrequencyTier::Rare => base_threshold + (1.0 - base_threshold) * 0.75,
+        }
     }
 
     pub fn generate_decorations(chunk: &mut Chunk, biome_name: &str) {
@@ -42,13 +59,25 @@ impl DecorationGenerator {
                                     );
                                 }
                             }
-                            "forest" => {
+                            "oak_forest" | "birch_forest" => {
                                 if block == BlockType::Grass {
                                     Self::generate_forest_decoration(
                                         chunk, x, surface_y, z, world_x, world_z,
                                     );
                                 }
                             }
+                            "taiga" => {
+                                if block == BlockType::Grass {
+                                    Self::generate_taiga_decoration(
+                                        chunk, x, surface_y, z, world_x, world_z,
+                                    );
+                                } else if block == BlockType::Podzol {
+                                    Self::generate_podzol_decoration(
+                                        chunk, x, surface_y, z, world_x, world_z,
+                                    );
+                                }
+                            }
+                            "snowy_taiga" => {}
                             "desert" => {
                                 if block == BlockType::Sand {
                                     Self::generate_desert_decoration(
@@ -80,30 +109,39 @@ impl DecorationGenerator {
             % 1000;
         let noise_value = noise_seed as f32 / 1000.0;
 
-        if noise_value > 0.96 {
-            let plant_type_seed = ((world_x as u32)
-                .wrapping_mul(109739919)
-                .wrapping_add((world_z as u32).wrapping_mul(715827883)))
-                % 100;
+        let plant_type_seed = ((world_x as u32)
+            .wrapping_mul(109739919)
+            .wrapping_add((world_z as u32).wrapping_mul(715827883)))
+            % 100;
 
-            let plant = if plant_type_seed < 25 {
-                BlockType::ShortGrass
-            } else if plant_type_seed < 45 {
-                // Tall grass: bottom + top
+        if plant_type_seed < 25 {
+            let threshold = Self::get_frequency_threshold(0.96, FrequencyTier::Frequent);
+            if noise_value > threshold {
+                chunk.set_block(x, surface_y, z, BlockType::ShortGrass);
+            }
+        } else if plant_type_seed < 45 {
+            let threshold = Self::get_frequency_threshold(0.96, FrequencyTier::Moderate);
+            if noise_value > threshold {
                 chunk.set_block(x, surface_y, z, BlockType::TallGrassBottom);
                 if surface_y + 1 < CHUNK_HEIGHT {
                     chunk.set_block(x, surface_y + 1, z, BlockType::TallGrassTop);
                 }
-                return;
-            } else if plant_type_seed < 65 {
-                BlockType::Poppy
-            } else if plant_type_seed < 80 {
-                BlockType::PinkTulip
-            } else {
-                BlockType::TorchFlower
-            };
-
-            chunk.set_block(x, surface_y, z, plant);
+            }
+        } else if plant_type_seed < 65 {
+            let threshold = Self::get_frequency_threshold(0.96, FrequencyTier::Moderate);
+            if noise_value > threshold {
+                chunk.set_block(x, surface_y, z, BlockType::Poppy);
+            }
+        } else if plant_type_seed < 80 {
+            let threshold = Self::get_frequency_threshold(0.96, FrequencyTier::Moderate);
+            if noise_value > threshold {
+                chunk.set_block(x, surface_y, z, BlockType::PinkTulip);
+            }
+        } else {
+            let threshold = Self::get_frequency_threshold(0.96, FrequencyTier::Rare);
+            if noise_value > threshold {
+                chunk.set_block(x, surface_y, z, BlockType::TorchFlower);
+            }
         }
     }
 
@@ -121,20 +159,98 @@ impl DecorationGenerator {
             % 1000;
         let noise_value = noise_seed as f32 / 1000.0;
 
-        // Forests have very sparse decorations
-        if noise_value > 0.97 {
-            let plant_type_seed = ((world_x as u32)
-                .wrapping_mul(109739919)
-                .wrapping_add((world_z as u32).wrapping_mul(715827883)))
-                % 100;
+        let plant_type_seed = ((world_x as u32)
+            .wrapping_mul(109739919)
+            .wrapping_add((world_z as u32).wrapping_mul(715827883)))
+            % 100;
 
-            let plant = if plant_type_seed < 50 {
-                BlockType::RedMushroom
-            } else {
-                BlockType::BrownMushroom
-            };
+        if plant_type_seed < 30 {
+            let threshold = Self::get_frequency_threshold(0.93, FrequencyTier::Frequent);
+            if noise_value > threshold {
+                chunk.set_block(x, surface_y, z, BlockType::ShortGrass);
+            }
+        } else if plant_type_seed < 50 {
+            let threshold = Self::get_frequency_threshold(0.93, FrequencyTier::Moderate);
+            if noise_value > threshold {
+                chunk.set_block(x, surface_y, z, BlockType::TallGrassBottom);
+                if surface_y + 1 < CHUNK_HEIGHT {
+                    chunk.set_block(x, surface_y + 1, z, BlockType::TallGrassTop);
+                }
+            }
+        } else if plant_type_seed < 70 {
+            let threshold = Self::get_frequency_threshold(0.93, FrequencyTier::Moderate);
+            if noise_value > threshold {
+                chunk.set_block(x, surface_y, z, BlockType::Poppy);
+            }
+        } else {
+            let threshold = Self::get_frequency_threshold(0.93, FrequencyTier::Moderate);
+            if noise_value > threshold {
+                chunk.set_block(x, surface_y, z, BlockType::PinkTulip);
+            }
+        }
+    }
 
-            chunk.set_block(x, surface_y, z, plant);
+    fn generate_taiga_decoration(
+        chunk: &mut Chunk,
+        x: i32,
+        surface_y: i32,
+        z: i32,
+        world_x: i32,
+        world_z: i32,
+    ) {
+        let noise_seed = ((world_x as u32)
+            .wrapping_mul(374761393)
+            .wrapping_add((world_z as u32).wrapping_mul(668265263)))
+            % 1000;
+        let noise_value = noise_seed as f32 / 1000.0;
+
+        let plant_type_seed = ((world_x as u32)
+            .wrapping_mul(109739919)
+            .wrapping_add((world_z as u32).wrapping_mul(715827883)))
+            % 100;
+
+        if plant_type_seed < 30 {
+            let threshold = Self::get_frequency_threshold(0.94, FrequencyTier::Frequent);
+            if noise_value > threshold {
+                chunk.set_block(x, surface_y, z, BlockType::ShortGrass);
+            }
+        } else if plant_type_seed < 50 {
+            let threshold = Self::get_frequency_threshold(0.94, FrequencyTier::Moderate);
+            if noise_value > threshold {
+                chunk.set_block(x, surface_y, z, BlockType::Fern);
+            }
+        } else if plant_type_seed < 70 {
+            let threshold = Self::get_frequency_threshold(0.94, FrequencyTier::Moderate);
+            if noise_value > threshold {
+                chunk.set_block(x, surface_y, z, BlockType::LargeFernBottom);
+                if surface_y + 1 < CHUNK_HEIGHT {
+                    chunk.set_block(x, surface_y + 1, z, BlockType::LargeFernTop);
+                }
+            }
+        } else {
+            let threshold = Self::get_frequency_threshold(0.94, FrequencyTier::Rare);
+            if noise_value > threshold {
+                chunk.set_block(x, surface_y, z, BlockType::SweetBerryBushStage1);
+            }
+        }
+    }
+
+    fn generate_podzol_decoration(
+        chunk: &mut Chunk,
+        x: i32,
+        surface_y: i32,
+        z: i32,
+        world_x: i32,
+        world_z: i32,
+    ) {
+        let noise_seed = ((world_x as u32)
+            .wrapping_mul(374761393)
+            .wrapping_add((world_z as u32).wrapping_mul(668265263)))
+            % 1000;
+        let noise_value = noise_seed as f32 / 1000.0;
+
+        if noise_value > 0.92 {
+            chunk.set_block(x, surface_y, z, BlockType::BrownMushroom);
         }
     }
 
@@ -152,22 +268,26 @@ impl DecorationGenerator {
             % 1000;
         let noise_value = noise_seed as f32 / 1000.0;
 
-        // Deserts are mostly empty
-        if noise_value > 0.99 {
-            let plant_type_seed = ((world_x as u32)
-                .wrapping_mul(109739919)
-                .wrapping_add((world_z as u32).wrapping_mul(715827883)))
-                % 100;
+        let plant_type_seed = ((world_x as u32)
+            .wrapping_mul(109739919)
+            .wrapping_add((world_z as u32).wrapping_mul(715827883)))
+            % 100;
 
-            let plant = if plant_type_seed < 35 {
-                BlockType::ShortDryGrass
-            } else if plant_type_seed < 65 {
-                BlockType::TallDryGrass
-            } else {
-                BlockType::DeadBush
-            };
-
-            chunk.set_block(x, surface_y, z, plant);
+        if plant_type_seed < 35 {
+            let threshold = Self::get_frequency_threshold(0.99, FrequencyTier::Frequent);
+            if noise_value > threshold {
+                chunk.set_block(x, surface_y, z, BlockType::ShortDryGrass);
+            }
+        } else if plant_type_seed < 65 {
+            let threshold = Self::get_frequency_threshold(0.99, FrequencyTier::Moderate);
+            if noise_value > threshold {
+                chunk.set_block(x, surface_y, z, BlockType::TallDryGrass);
+            }
+        } else {
+            let threshold = Self::get_frequency_threshold(0.99, FrequencyTier::Rare);
+            if noise_value > threshold {
+                chunk.set_block(x, surface_y, z, BlockType::DeadBush);
+            }
         }
     }
 }
@@ -196,6 +316,139 @@ impl TreeGenerator {
 
     pub fn register_tree(&mut self, world_x: i32, world_z: i32) {
         self.tree_positions.insert((world_x, world_z));
+    }
+
+    pub fn spawn_trees_for_chunk(&mut self, chunk: &mut Chunk, terrain_gen: &TerrainGenerator) {
+        let water_level = terrain_gen.get_water_level();
+
+        for x in 0..CHUNK_SIZE {
+            for z in 0..CHUNK_SIZE {
+                let world_x = chunk.pos.x * CHUNK_SIZE + x;
+                let world_z = chunk.pos.z * CHUNK_SIZE + z;
+
+                let mut actual_surface = -1;
+
+                for y in (0..CHUNK_HEIGHT).rev() {
+                    if chunk.get_block(x, y, z) != BlockType::Air {
+                        actual_surface = y;
+                        break;
+                    }
+                }
+
+                if actual_surface >= water_level && actual_surface < CHUNK_HEIGHT - 8 {
+                    let biome = terrain_gen.get_biome_at(world_x, actual_surface, world_z);
+                    let block = chunk.get_block(x, actual_surface, z);
+
+                    let (should_spawn, surface_requirement, tree_threshold, tree_type) =
+                        match biome.name.as_str() {
+                            "taiga" => (true, BlockType::Podzol, 0.96, TreeType::Spruce),
+                            "snowy_taiga" => (true, BlockType::GrassSnowy, 0.96, TreeType::Spruce),
+                            "oak_forest" => (true, BlockType::Grass, 0.94, TreeType::Oak),
+                            "birch_forest" => (true, BlockType::Grass, 0.94, TreeType::Birch),
+                            _ => (false, BlockType::Air, 0.98, TreeType::Oak),
+                        };
+
+                    if !should_spawn || block != surface_requirement {
+                        continue;
+                    }
+
+                    let tree_check = ((world_x as u32)
+                        .wrapping_mul(374761393)
+                        .wrapping_add((world_z as u32).wrapping_mul(668265263))
+                        % 1000) as f32
+                        / 1000.0;
+
+                    if tree_check > tree_threshold && self.can_place_tree(world_x, world_z) {
+                        let seed = (world_x as u32)
+                            .wrapping_mul(374761393)
+                            .wrapping_add((world_z as u32).wrapping_mul(668265263));
+
+                        if generate_tree(chunk, x, actual_surface + 1, z, seed, tree_type) {
+                            self.register_tree(world_x, world_z);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn generate_surface_variants(chunk: &mut Chunk, terrain_gen: &TerrainGenerator) {
+        for x in 0..CHUNK_SIZE {
+            for z in 0..CHUNK_SIZE {
+                let world_x = chunk.pos.x * CHUNK_SIZE + x;
+                let world_z = chunk.pos.z * CHUNK_SIZE + z;
+
+                for y in (0..CHUNK_HEIGHT).rev() {
+                    let block = chunk.get_block(x, y, z);
+
+                    if block == BlockType::Air || block == BlockType::Water {
+                        continue;
+                    }
+
+                    let biome = terrain_gen.get_biome_at(world_x, y, world_z);
+
+                    if let Some(variant) = biome.surface_variant {
+                        if block == biome.c_top && biome.surface_variant_frequency > 0.0 {
+                            let noise_val = ((world_x as u32)
+                                .wrapping_mul(374761393)
+                                .wrapping_add((world_z as u32).wrapping_mul(668265263))
+                                .wrapping_add(y as u32)
+                                .wrapping_mul(715827883))
+                                % 1000;
+                            let noise_factor = (noise_val as f32) / 1000.0;
+
+                            if noise_factor < biome.surface_variant_frequency {
+                                let radius = 10;
+                                for px in -radius..=radius {
+                                    for pz in -radius..=radius {
+                                        let dist_sq = px * px + pz * pz;
+                                        let max_dist_sq = radius * radius;
+                                        let dist_factor = (max_dist_sq as f32 - dist_sq as f32)
+                                            / (max_dist_sq as f32);
+
+                                        let patch_noise = ((world_x as u32)
+                                            .wrapping_mul(374761393)
+                                            .wrapping_add((world_z as u32).wrapping_mul(668265263))
+                                            .wrapping_add(px as u32)
+                                            .wrapping_mul(109739919)
+                                            .wrapping_add(pz as u32)
+                                            .wrapping_mul(715827883))
+                                            % 1000;
+                                        let patch_factor = (patch_noise as f32) / 1000.0;
+
+                                        if dist_factor * 0.6 + patch_factor * 0.4 > 0.35
+                                            && dist_sq > 0
+                                        {
+                                            let px_local = x + px;
+                                            let pz_local = z + pz;
+                                            for dy in -1..=1 {
+                                                let target_y = y + dy;
+                                                if target_y >= 0 && target_y < CHUNK_HEIGHT {
+                                                    let block_at = chunk
+                                                        .get_block(px_local, target_y, pz_local);
+                                                    if matches!(
+                                                        block_at,
+                                                        BlockType::Grass
+                                                            | BlockType::Dirt
+                                                            | BlockType::GrassSnowy
+                                                    ) {
+                                                        chunk.set_block(
+                                                            px_local, target_y, pz_local, variant,
+                                                        );
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    break;
+                }
+            }
+        }
     }
 }
 
@@ -508,15 +761,6 @@ fn generate_spruce_tree(chunk: &mut Chunk, x: i32, base_y: i32, z: i32, seed: u3
                     if current_block == BlockType::Air || current_block == BlockType::SnowLayer {
                         chunk.set_block(world_x, world_y, world_z, BlockType::SpruceLeaves);
                     }
-                } else if leaves_buffer[lx][ly][lz] == 2 {
-                    let world_x = x + lx as i32 - 3;
-                    let world_y = p_y + ly as i32 - 6;
-                    let world_z = z + lz as i32 - 3;
-
-                    let current_block = chunk.get_block(world_x, world_y, world_z);
-                    if current_block == BlockType::Air || current_block == BlockType::SnowLayer {
-                        chunk.set_block(world_x, world_y, world_z, BlockType::SnowLayer);
-                    }
                 }
             }
         }
@@ -525,7 +769,12 @@ fn generate_spruce_tree(chunk: &mut Chunk, x: i32, base_y: i32, z: i32, seed: u3
     true
 }
 
-pub fn generate_snow(chunk: &mut Chunk, snow_start_altitude: i32, snow_full_altitude: i32) {
+pub fn generate_snow(
+    chunk: &mut Chunk,
+    snow_start_altitude: i32,
+    snow_full_altitude: i32,
+    biome_name: &str,
+) {
     let world_x_base = chunk.pos.x * CHUNK_SIZE;
     let world_z_base = chunk.pos.z * CHUNK_SIZE;
 
@@ -572,18 +821,8 @@ pub fn generate_snow(chunk: &mut Chunk, snow_start_altitude: i32, snow_full_alti
                                 chunk.set_block(x, snow_y, z, BlockType::SnowLayer);
                             }
                         }
-                        BlockType::OakLeaves => {
-                            if adjusted_factor > 0.7 {
-                                let snow_y = y + 1;
-                                if snow_y < CHUNK_HEIGHT
-                                    && chunk.get_block(x, snow_y, z) == BlockType::Air
-                                {
-                                    chunk.set_block(x, snow_y, z, BlockType::SnowLayer);
-                                }
-                            }
-                        }
-                        BlockType::Stone | BlockType::Dirt => {
-                            let snow_y = y;
+                        _ if block.is_full_block() => {
+                            let snow_y = y + 1;
                             if snow_y < CHUNK_HEIGHT
                                 && chunk.get_block(x, snow_y, z) == BlockType::Air
                             {

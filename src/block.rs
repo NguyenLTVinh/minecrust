@@ -26,6 +26,12 @@ pub enum BlockType {
     PinkTulip,
     ShortDryGrass,
     TallGrassBottom,
+    Podzol,
+    Fern,
+    LargeFernTop,
+    LargeFernBottom,
+    SweetBerryBushStage1,
+    SweetBerryBushStage2,
 }
 
 impl BlockType {
@@ -43,16 +49,18 @@ impl BlockType {
                 | BlockType::PinkTulip
                 | BlockType::ShortDryGrass
                 | BlockType::TallGrassBottom
+                | BlockType::Fern
+                | BlockType::LargeFernTop
+                | BlockType::LargeFernBottom
+                | BlockType::SweetBerryBushStage1
+                | BlockType::SweetBerryBushStage2
         )
     }
 
-    pub fn is_solid(&self) -> bool {
+    pub fn is_full_block(&self) -> bool {
         !matches!(
             self,
-            BlockType::Air
-                | BlockType::Water
-                | BlockType::SnowLayer
-                | BlockType::BrownMushroom
+            BlockType::BrownMushroom
                 | BlockType::Poppy
                 | BlockType::ShortGrass
                 | BlockType::TallGrassTop
@@ -63,9 +71,12 @@ impl BlockType {
                 | BlockType::PinkTulip
                 | BlockType::ShortDryGrass
                 | BlockType::TallGrassBottom
-                | BlockType::BirchLeaves
-                | BlockType::OakLeaves
-                | BlockType::SpruceLeaves
+                | BlockType::Fern
+                | BlockType::LargeFernTop
+                | BlockType::LargeFernBottom
+                | BlockType::SweetBerryBushStage1
+                | BlockType::SweetBerryBushStage2
+                | BlockType::SnowLayer
         )
     }
 
@@ -89,28 +100,12 @@ impl BlockType {
                 | BlockType::BirchLeaves
                 | BlockType::OakLeaves
                 | BlockType::SpruceLeaves
+                | BlockType::Fern
+                | BlockType::LargeFernTop
+                | BlockType::LargeFernBottom
+                | BlockType::SweetBerryBushStage1
+                | BlockType::SweetBerryBushStage2
         )
-    }
-
-    pub fn get_color(&self) -> [f32; 3] {
-        match self {
-            BlockType::Air => [0.0, 0.0, 0.0],
-            BlockType::Grass => [0.2, 0.8, 0.2],
-            BlockType::GrassSnowy => [0.2, 0.8, 0.2],
-            BlockType::Dirt => [0.6, 0.4, 0.2],
-            BlockType::Stone => [0.5, 0.5, 0.5],
-            BlockType::Sand => [0.9, 0.8, 0.6],
-            BlockType::OakLog => [0.55, 0.35, 0.2],
-            BlockType::OakLeaves => [0.1, 0.6, 0.1],
-            BlockType::Water => [0.2, 0.4, 0.8],
-            BlockType::Snow => [1.0, 1.0, 1.0],
-            BlockType::SnowLayer => [1.0, 1.0, 1.0],
-            BlockType::SpruceLog => [0.4, 0.25, 0.15],
-            BlockType::SpruceLeaves => [0.2, 0.4, 0.2],
-            BlockType::BirchLog => [0.9, 0.9, 0.85],
-            BlockType::BirchLeaves => [0.1, 0.6, 0.1],
-            _ => [1.0, 1.0, 1.0],
-        }
     }
 }
 

@@ -16,42 +16,13 @@ use decoration::TreeGenerator;
 use gl::types::*;
 use glfw::{Action, Context, Key};
 use shader::{FRAGMENT_SHADER, VERTEX_SHADER, compile_shader, link_program};
-use sky::{SKY_FRAGMENT_SHADER, SKY_VERTEX_SHADER, Sky};
+use sky::{SKY_FRAGMENT_SHADER, SKY_VERTEX_SHADER, Sky, get_wicked_time_of_day};
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::ffi::CString;
 use std::sync::Arc;
 use terrain::TerrainGenerator;
 use texture::TextureAtlas;
-
-struct DayNightCycle {
-    time: f32,
-    tick_speed: f32,
-    fast_forward: bool,
-}
-
-impl DayNightCycle {
-    fn new() -> Self {
-        DayNightCycle {
-            time: 0.25,
-            tick_speed: 0.01,
-            fast_forward: false,
-        }
-    }
-
-    fn update(&mut self, delta_time: f32) {
-        let speed = if self.fast_forward {
-            self.tick_speed * 10.0
-        } else {
-            self.tick_speed
-        };
-
-        self.time += speed * delta_time;
-        if self.time > 1.0 {
-            self.time -= 1.0;
-        }
-    }
-}
 
 struct ChunkGenerationRequest {
     pos: ChunkPos,
@@ -73,7 +44,6 @@ struct Game {
     last_mouse_y: f64,
     first_mouse: bool,
     tree_generator: TreeGenerator,
-    day_night_cycle: DayNightCycle,
     sky: Sky,
     chunk_request_tx: Sender<ChunkGenerationRequest>,
     chunk_result_rx: Receiver<ChunkGenerationResult>,
@@ -119,7 +89,6 @@ impl Game {
             last_mouse_y: 300.0,
             first_mouse: true,
             tree_generator: TreeGenerator::new(),
-            day_night_cycle: DayNightCycle::new(),
             sky,
             chunk_request_tx,
             chunk_result_rx,
@@ -203,7 +172,7 @@ impl Game {
             self.camera.position.y -= speed;
         }
 
-        self.day_night_cycle.fast_forward = window.get_key(Key::T) == Action::Press;
+        self.sky.day_night_cycle.fast_forward = window.get_key(Key::T) == Action::Press;
     }
 
     fn handle_mouse(&mut self, xpos: f64, ypos: f64) {
@@ -251,19 +220,27 @@ impl Game {
                 self.shader_program,
                 CString::new("sunIntensity").unwrap().as_ptr(),
             );
+            let wicked_time_loc = gl::GetUniformLocation(
+                self.shader_program,
+                CString::new("wickedTime").unwrap().as_ptr(),
+            );
 
             gl::UniformMatrix4fv(view_loc, 1, gl::FALSE, view.as_ptr());
             gl::UniformMatrix4fv(proj_loc, 1, gl::FALSE, projection.as_ptr());
 
-            let sun_dir = self.sky.get_sun_direction(self.day_night_cycle.time);
+            let sun_dir = self.sky.get_sun_direction(self.sky.day_night_cycle.time);
             gl::Uniform3f(sun_dir_loc, sun_dir.x, sun_dir.y, sun_dir.z);
             gl::Uniform1f(
                 ambient_loc,
-                Sky::get_ambient_light(self.day_night_cycle.time),
+                Sky::get_ambient_light(self.sky.day_night_cycle.time),
             );
             gl::Uniform1f(
                 sun_intensity_loc,
-                Sky::get_sun_intensity(self.day_night_cycle.time),
+                Sky::get_sun_intensity(self.sky.day_night_cycle.time),
+            );
+            gl::Uniform1f(
+                wicked_time_loc,
+                get_wicked_time_of_day(self.sky.day_night_cycle.time),
             );
 
             gl::ActiveTexture(gl::TEXTURE0);
@@ -284,7 +261,7 @@ impl Game {
                 self.camera.position,
                 &view,
                 &projection,
-                self.day_night_cycle.time,
+                self.sky.day_night_cycle.time,
                 suncolor,
                 suncolor2,
                 mooncolor,
@@ -354,10 +331,10 @@ fn main() {
         }
 
         game.handle_input(&mut window, delta_time);
-        game.day_night_cycle.update(delta_time);
+        game.sky.day_night_cycle.update(delta_time);
         game.update_chunks();
 
-        let sky_color = Sky::get_sky_color(game.day_night_cycle.time);
+        let sky_color = Sky::get_sky_color(game.sky.day_night_cycle.time);
         unsafe {
             gl::ClearColor(sky_color[0], sky_color[1], sky_color[2], sky_color[3]);
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);

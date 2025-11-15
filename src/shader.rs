@@ -80,6 +80,7 @@ uniform sampler2D blockTexture;
 uniform vec3 sunDirection;
 uniform float ambientLight;
 uniform float sunIntensity;
+uniform float wickedTime;
 
 void main() {
     vec4 texColor = texture(blockTexture, TexCoord);

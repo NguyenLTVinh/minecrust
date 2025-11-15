@@ -7,11 +7,41 @@ use std::ptr;
 const SUN_SIZE: f32 = 0.35;
 const MOON_SIZE: f32 = 0.2;
 
+pub struct DayNightCycle {
+    pub time: f32,
+    pub tick_speed: f32,
+    pub fast_forward: bool,
+}
+
+impl DayNightCycle {
+    pub fn new() -> Self {
+        DayNightCycle {
+            time: 0.25,
+            tick_speed: 0.001,
+            fast_forward: false,
+        }
+    }
+
+    pub fn update(&mut self, delta_time: f32) {
+        let speed = if self.fast_forward {
+            self.tick_speed * 100.0
+        } else {
+            self.tick_speed
+        };
+
+        self.time += speed * delta_time;
+        if self.time > 1.0 {
+            self.time -= 1.0;
+        }
+    }
+}
+
 pub struct Sky {
     shader_program: GLuint,
     body_orbit_tilt: f32,
     quad_vao: GLuint,
     quad_vbo: GLuint,
+    pub day_night_cycle: DayNightCycle,
 }
 
 impl Sky {
@@ -23,6 +53,7 @@ impl Sky {
             body_orbit_tilt: 0.0,
             quad_vao,
             quad_vbo,
+            day_night_cycle: DayNightCycle::new(),
         })
     }
 
@@ -371,20 +402,12 @@ impl Sky {
     }
 
     pub fn get_sky_color(time_of_day: f32) -> [f32; 4] {
-        // Calculate sky color based on time of day
-        // Synchronized with sun visibility (0.15-0.85)
-        // 0.0-0.1: Night (dark blue)
-        // 0.1-0.15: Pre-dawn (dark to orange transition)
-        // 0.15-0.35: Sunrise (orange gradient while sun rises)
-        // 0.35-0.65: Day (blue)
-        // 0.65-0.85: Sunset (orange gradient while sun sets)
-        // 0.85-0.9: Post-dusk (orange to dark transition)
-        // 0.9-1.0: Night (dark blue)
+        let wicked_time = get_wicked_time_of_day(time_of_day);
 
-        if time_of_day < 0.1 || time_of_day > 0.9 {
+        if wicked_time < 0.1 || wicked_time > 0.9 {
             [0.05, 0.05, 0.15, 1.0]
-        } else if time_of_day < 0.15 {
-            let t = (time_of_day - 0.1) / 0.05;
+        } else if wicked_time < 0.25 {
+            let t = (wicked_time - 0.1) / 0.15;
             let night = [0.05, 0.05, 0.15];
             let sunrise = [0.9, 0.5, 0.2];
             [
@@ -393,8 +416,8 @@ impl Sky {
                 night[2] + (sunrise[2] - night[2]) * t,
                 1.0,
             ]
-        } else if time_of_day < 0.35 {
-            let t = (time_of_day - 0.15) / 0.2;
+        } else if wicked_time < 0.35 {
+            let t = (wicked_time - 0.25) / 0.1;
             let sunrise = [0.9, 0.5, 0.2];
             let day = [0.53, 0.81, 0.92];
             [
@@ -403,10 +426,10 @@ impl Sky {
                 sunrise[2] + (day[2] - sunrise[2]) * t,
                 1.0,
             ]
-        } else if time_of_day < 0.65 {
+        } else if wicked_time < 0.65 {
             [0.53, 0.81, 0.92, 1.0]
-        } else if time_of_day < 0.85 {
-            let t = (time_of_day - 0.65) / 0.2;
+        } else if wicked_time < 0.75 {
+            let t = (wicked_time - 0.65) / 0.1;
             let day = [0.53, 0.81, 0.92];
             let sunset = [0.9, 0.4, 0.15];
             [
@@ -415,8 +438,8 @@ impl Sky {
                 day[2] + (sunset[2] - day[2]) * t,
                 1.0,
             ]
-        } else if time_of_day < 0.9 {
-            let t = (time_of_day - 0.85) / 0.05;
+        } else if wicked_time < 0.9 {
+            let t = (wicked_time - 0.75) / 0.15;
             let sunset = [0.9, 0.4, 0.15];
             let night = [0.05, 0.05, 0.15];
             [
@@ -431,15 +454,16 @@ impl Sky {
     }
 
     pub fn get_ambient_light(time_of_day: f32) -> f32 {
-        if time_of_day < 0.15 || time_of_day > 0.85 {
+        let wicked_time = get_wicked_time_of_day(time_of_day);
+        if wicked_time < 0.1 || wicked_time > 0.9 {
             0.1
-        } else if time_of_day < 0.25 {
-            let t = (time_of_day - 0.15) / 0.1;
+        } else if wicked_time < 0.25 {
+            let t = (wicked_time - 0.1) / 0.15;
             0.1 + 0.3 * t
-        } else if time_of_day < 0.75 {
+        } else if wicked_time < 0.75 {
             0.4
-        } else if time_of_day < 0.85 {
-            let t = (time_of_day - 0.75) / 0.1;
+        } else if wicked_time < 0.9 {
+            let t = (wicked_time - 0.75) / 0.15;
             0.4 - 0.3 * t
         } else {
             0.1
@@ -447,17 +471,16 @@ impl Sky {
     }
 
     pub fn get_sun_intensity(time_of_day: f32) -> f32 {
-        // Sun intensity - 0 at night, full during day
-        // Gradual fade as sun gets closer to horizon
-        if time_of_day < 0.15 || time_of_day > 0.85 {
+        let wicked_time = get_wicked_time_of_day(time_of_day);
+        if wicked_time < 0.1 || wicked_time > 0.9 {
             0.0
-        } else if time_of_day < 0.25 {
-            let t = (time_of_day - 0.15) / 0.1;
+        } else if wicked_time < 0.25 {
+            let t = (wicked_time - 0.1) / 0.15;
             t * t
-        } else if time_of_day < 0.75 {
+        } else if wicked_time < 0.75 {
             1.0
-        } else if time_of_day < 0.85 {
-            let t = (time_of_day - 0.75) / 0.1;
+        } else if wicked_time < 0.9 {
+            let t = (wicked_time - 0.75) / 0.15;
             let fade = 1.0 - t;
             fade * fade
         } else {

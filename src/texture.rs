@@ -92,9 +92,20 @@ impl TextureAtlas {
         let birch_log = load_texture("block/birch_log.png");
         let birch_log_top = load_texture("block/birch_log_top.png");
         let birch_leaves = load_texture("block/birch_leaves.png");
+        let brown_mushroom = load_texture("block/brown_mushroom.png");
+        let poppy = load_texture("block/poppy.png");
+        let short_grass = load_texture("block/short_grass.png");
+        let tall_grass_top = load_texture("block/tall_grass_top.png");
+        let dead_bush = load_texture("block/dead_bush.png");
+        let red_mushroom = load_texture("block/red_mushroom.png");
+        let tall_dry_grass = load_texture("block/tall_dry_grass.png");
+        let torchflower = load_texture("block/torchflower.png");
+        let pink_tulip = load_texture("block/pink_tulip.png");
+        let short_dry_grass = load_texture("block/short_dry_grass.png");
+        let tall_grass_bottom = load_texture("block/tall_grass_bottom.png");
 
-        let atlas_width = TEXTURE_SIZE * 5;
-        let atlas_height = TEXTURE_SIZE * 4;
+        let atlas_width = TEXTURE_SIZE * 6;
+        let atlas_height = TEXTURE_SIZE * 6;
         let mut atlas = RgbaImage::new(atlas_width, atlas_height);
 
         let textures = vec![
@@ -115,11 +126,22 @@ impl TextureAtlas {
             birch_log,
             birch_log_top,
             birch_leaves,
+            brown_mushroom,
+            poppy,
+            short_grass,
+            tall_grass_top,
+            dead_bush,
+            red_mushroom,
+            tall_dry_grass,
+            torchflower,
+            pink_tulip,
+            short_dry_grass,
+            tall_grass_bottom,
         ];
         for (i, tex) in textures.iter().enumerate() {
             let tex = tex.to_rgba8();
-            let row = i / 5;
-            let col = i % 5;
+            let row = i / 6;
+            let col = i % 6;
             let x_offset = col as u32 * TEXTURE_SIZE;
             let y_offset = row as u32 * TEXTURE_SIZE;
 
@@ -218,6 +240,17 @@ impl TextureAtlas {
                 _ => 14,
             },
             BlockType::BirchLeaves => 16,
+            BlockType::BrownMushroom => 17,
+            BlockType::Poppy => 18,
+            BlockType::ShortGrass => 19,
+            BlockType::TallGrassTop => 20,
+            BlockType::DeadBush => 21,
+            BlockType::RedMushroom => 22,
+            BlockType::TallDryGrass => 23,
+            BlockType::TorchFlower => 24,
+            BlockType::PinkTulip => 25,
+            BlockType::ShortDryGrass => 26,
+            BlockType::TallGrassBottom => 27,
             BlockType::Air => 0,
         };
         TextureCoords::new(index, self.atlas_width, self.atlas_height)
@@ -226,6 +259,9 @@ impl TextureAtlas {
     pub fn get_tint(&self, block: BlockType) -> [f32; 3] {
         match block {
             BlockType::Grass => self.grass_color,
+            BlockType::ShortGrass | BlockType::TallGrassTop | BlockType::TallGrassBottom => {
+                self.grass_color
+            }
             BlockType::OakLeaves | BlockType::SpruceLeaves | BlockType::BirchLeaves => {
                 self.foliage_color
             }

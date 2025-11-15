@@ -15,20 +15,80 @@ pub enum BlockType {
     SpruceLeaves,
     BirchLog,
     BirchLeaves,
+    BrownMushroom,
+    Poppy,
+    ShortGrass,
+    TallGrassTop,
+    DeadBush,
+    RedMushroom,
+    TallDryGrass,
+    TorchFlower,
+    PinkTulip,
+    ShortDryGrass,
+    TallGrassBottom,
 }
 
 impl BlockType {
+    pub fn is_decorative(&self) -> bool {
+        matches!(
+            self,
+            BlockType::BrownMushroom
+                | BlockType::Poppy
+                | BlockType::ShortGrass
+                | BlockType::TallGrassTop
+                | BlockType::DeadBush
+                | BlockType::RedMushroom
+                | BlockType::TallDryGrass
+                | BlockType::TorchFlower
+                | BlockType::PinkTulip
+                | BlockType::ShortDryGrass
+                | BlockType::TallGrassBottom
+        )
+    }
+
     pub fn is_solid(&self) -> bool {
         !matches!(
             self,
-            BlockType::Air | BlockType::Water | BlockType::SnowLayer
+            BlockType::Air
+                | BlockType::Water
+                | BlockType::SnowLayer
+                | BlockType::BrownMushroom
+                | BlockType::Poppy
+                | BlockType::ShortGrass
+                | BlockType::TallGrassTop
+                | BlockType::DeadBush
+                | BlockType::RedMushroom
+                | BlockType::TallDryGrass
+                | BlockType::TorchFlower
+                | BlockType::PinkTulip
+                | BlockType::ShortDryGrass
+                | BlockType::TallGrassBottom
+                | BlockType::BirchLeaves
+                | BlockType::OakLeaves
+                | BlockType::SpruceLeaves
         )
     }
 
     pub fn is_transparent(&self) -> bool {
         matches!(
             self,
-            BlockType::Air | BlockType::Water | BlockType::SnowLayer
+            BlockType::Air
+                | BlockType::Water
+                | BlockType::SnowLayer
+                | BlockType::BrownMushroom
+                | BlockType::Poppy
+                | BlockType::ShortGrass
+                | BlockType::TallGrassTop
+                | BlockType::DeadBush
+                | BlockType::RedMushroom
+                | BlockType::TallDryGrass
+                | BlockType::TorchFlower
+                | BlockType::PinkTulip
+                | BlockType::ShortDryGrass
+                | BlockType::TallGrassBottom
+                | BlockType::BirchLeaves
+                | BlockType::OakLeaves
+                | BlockType::SpruceLeaves
         )
     }
 
@@ -49,6 +109,7 @@ impl BlockType {
             BlockType::SpruceLeaves => [0.2, 0.4, 0.2],
             BlockType::BirchLog => [0.9, 0.9, 0.85],
             BlockType::BirchLeaves => [0.1, 0.6, 0.1],
+            _ => [1.0, 1.0, 1.0],
         }
     }
 }

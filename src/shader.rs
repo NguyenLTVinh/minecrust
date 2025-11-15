@@ -83,6 +83,11 @@ uniform float sunIntensity;
 
 void main() {
     vec4 texColor = texture(blockTexture, TexCoord);
+    
+    if (texColor.a < 0.5) {
+        discard;
+    }
+    
     vec3 tintedColor = texColor.rgb * Tint;
     
     vec3 norm = normalize(Normal);
@@ -92,6 +97,6 @@ void main() {
     float totalLight = ambientLight + diff * (1.0 - ambientLight);
     
     vec3 result = tintedColor * totalLight;
-    color = vec4(result, texColor.a);
+    color = vec4(result, 1.0);
 }
 "#;

@@ -1,5 +1,7 @@
 use crate::block::{BlockType, FaceDirection};
-use crate::decoration::{TreeGenerator, TreeType, add_snow_layer, generate_snow, generate_tree};
+use crate::decoration::{
+    DecorationGenerator, TreeGenerator, TreeType, add_snow_layer, generate_snow, generate_tree,
+};
 use crate::terrain::TerrainGenerator;
 use crate::texture::{TextureAtlas, TextureCoords};
 use gl::types::*;
@@ -148,6 +150,9 @@ impl Chunk {
 
         generate_snow(&mut chunk, 80, 95);
 
+        let test_biome = terrain_gen.get_biome_at(pos.x * CHUNK_SIZE, 32, pos.z * CHUNK_SIZE);
+        DecorationGenerator::generate_decorations(&mut chunk, &test_biome.name);
+
         chunk
     }
 
@@ -278,6 +283,13 @@ pub fn generate_chunk_mesh(chunk: &Chunk, atlas: &TextureAtlas) -> Vec<f32> {
                     let tex_coords = atlas.get_tex_coords(block, FaceDirection::Top);
                     let tint = atlas.get_tint(block);
                     add_snow_layer(&mut vertices, wx, wy, wz, height, tex_coords, tint);
+                    continue;
+                }
+
+                if block.is_decorative() {
+                    let tex_coords = atlas.get_tex_coords(block, FaceDirection::Top);
+                    let tint = atlas.get_tint(block);
+                    add_cross_plant(&mut vertices, wx, wy, wz, tex_coords, tint);
                     continue;
                 }
 
@@ -441,5 +453,71 @@ fn add_face(
         vertices.extend_from_slice(&uvs[i]);
         vertices.extend_from_slice(&tint);
         vertices.extend_from_slice(&normal);
+    }
+}
+
+fn add_cross_plant(
+    vertices: &mut Vec<f32>,
+    x: f32,
+    y: f32,
+    z: f32,
+    tex: TextureCoords,
+    tint: [f32; 3],
+) {
+    let cx = x + 0.5;
+    let cz = z + 0.5;
+
+    let normal1 = [0.7071, 0.0, 0.7071];
+    #[rustfmt::skip]
+    let square1 = vec![
+        cx - 0.5, y,       cz - 0.5,
+        cx - 0.5, y + 1.0, cz - 0.5,
+        cx + 0.5, y + 1.0, cz + 0.5,
+        
+        cx - 0.5, y,       cz - 0.5,
+        cx + 0.5, y + 1.0, cz + 0.5,
+        cx + 0.5, y,       cz + 0.5,
+    ];
+    let uvs1 = [
+        [tex.u_min, tex.v_max],
+        [tex.u_min, tex.v_min],
+        [tex.u_max, tex.v_min],
+        [tex.u_min, tex.v_max],
+        [tex.u_max, tex.v_min],
+        [tex.u_max, tex.v_max],
+    ];
+
+    for (i, pos_idx) in (0..square1.len()).step_by(3).enumerate() {
+        vertices.extend_from_slice(&square1[pos_idx..pos_idx + 3]);
+        vertices.extend_from_slice(&uvs1[i]);
+        vertices.extend_from_slice(&tint);
+        vertices.extend_from_slice(&normal1);
+    }
+
+    let normal2 = [-0.7071, 0.0, 0.7071];
+    #[rustfmt::skip]
+    let square2 = vec![
+        cx + 0.5, y,       cz - 0.5,
+        cx + 0.5, y + 1.0, cz - 0.5,
+        cx - 0.5, y + 1.0, cz + 0.5,
+        
+        cx + 0.5, y,       cz - 0.5,
+        cx - 0.5, y + 1.0, cz + 0.5,
+        cx - 0.5, y,       cz + 0.5,
+    ];
+    let uvs2 = [
+        [tex.u_min, tex.v_max],
+        [tex.u_min, tex.v_min],
+        [tex.u_max, tex.v_min],
+        [tex.u_min, tex.v_max],
+        [tex.u_max, tex.v_min],
+        [tex.u_max, tex.v_max],
+    ];
+
+    for (i, pos_idx) in (0..square2.len()).step_by(3).enumerate() {
+        vertices.extend_from_slice(&square2[pos_idx..pos_idx + 3]);
+        vertices.extend_from_slice(&uvs2[i]);
+        vertices.extend_from_slice(&tint);
+        vertices.extend_from_slice(&normal2);
     }
 }

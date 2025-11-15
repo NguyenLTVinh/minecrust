@@ -7,6 +7,171 @@ pub struct TreeGenerator {
     tree_positions: HashSet<(i32, i32)>,
 }
 
+pub struct DecorationGenerator;
+
+impl DecorationGenerator {
+    pub fn new() -> Self {
+        DecorationGenerator
+    }
+
+    pub fn generate_decorations(chunk: &mut Chunk, biome_name: &str) {
+        let world_x_base = chunk.pos.x * CHUNK_SIZE;
+        let world_z_base = chunk.pos.z * CHUNK_SIZE;
+
+        for x in 0..CHUNK_SIZE {
+            for z in 0..CHUNK_SIZE {
+                let world_x = world_x_base + x;
+                let world_z = world_z_base + z;
+
+                for y in (0..CHUNK_HEIGHT).rev() {
+                    let block = chunk.get_block(x, y, z);
+
+                    if block == BlockType::Air || block == BlockType::Water {
+                        continue;
+                    }
+
+                    let surface_y = y + 1;
+                    if surface_y < CHUNK_HEIGHT
+                        && chunk.get_block(x, surface_y, z) == BlockType::Air
+                    {
+                        match biome_name {
+                            "grassland" => {
+                                if block == BlockType::Grass {
+                                    Self::generate_grassland_decoration(
+                                        chunk, x, surface_y, z, world_x, world_z,
+                                    );
+                                }
+                            }
+                            "forest" => {
+                                if block == BlockType::Grass {
+                                    Self::generate_forest_decoration(
+                                        chunk, x, surface_y, z, world_x, world_z,
+                                    );
+                                }
+                            }
+                            "desert" => {
+                                if block == BlockType::Sand {
+                                    Self::generate_desert_decoration(
+                                        chunk, x, surface_y, z, world_x, world_z,
+                                    );
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+
+                    break;
+                }
+            }
+        }
+    }
+
+    fn generate_grassland_decoration(
+        chunk: &mut Chunk,
+        x: i32,
+        surface_y: i32,
+        z: i32,
+        world_x: i32,
+        world_z: i32,
+    ) {
+        let noise_seed = ((world_x as u32)
+            .wrapping_mul(374761393)
+            .wrapping_add((world_z as u32).wrapping_mul(668265263)))
+            % 1000;
+        let noise_value = noise_seed as f32 / 1000.0;
+
+        if noise_value > 0.96 {
+            let plant_type_seed = ((world_x as u32)
+                .wrapping_mul(109739919)
+                .wrapping_add((world_z as u32).wrapping_mul(715827883)))
+                % 100;
+
+            let plant = if plant_type_seed < 25 {
+                BlockType::ShortGrass
+            } else if plant_type_seed < 45 {
+                // Tall grass: bottom + top
+                chunk.set_block(x, surface_y, z, BlockType::TallGrassBottom);
+                if surface_y + 1 < CHUNK_HEIGHT {
+                    chunk.set_block(x, surface_y + 1, z, BlockType::TallGrassTop);
+                }
+                return;
+            } else if plant_type_seed < 65 {
+                BlockType::Poppy
+            } else if plant_type_seed < 80 {
+                BlockType::PinkTulip
+            } else {
+                BlockType::TorchFlower
+            };
+
+            chunk.set_block(x, surface_y, z, plant);
+        }
+    }
+
+    fn generate_forest_decoration(
+        chunk: &mut Chunk,
+        x: i32,
+        surface_y: i32,
+        z: i32,
+        world_x: i32,
+        world_z: i32,
+    ) {
+        let noise_seed = ((world_x as u32)
+            .wrapping_mul(374761393)
+            .wrapping_add((world_z as u32).wrapping_mul(668265263)))
+            % 1000;
+        let noise_value = noise_seed as f32 / 1000.0;
+
+        // Forests have very sparse decorations
+        if noise_value > 0.97 {
+            let plant_type_seed = ((world_x as u32)
+                .wrapping_mul(109739919)
+                .wrapping_add((world_z as u32).wrapping_mul(715827883)))
+                % 100;
+
+            let plant = if plant_type_seed < 50 {
+                BlockType::RedMushroom
+            } else {
+                BlockType::BrownMushroom
+            };
+
+            chunk.set_block(x, surface_y, z, plant);
+        }
+    }
+
+    fn generate_desert_decoration(
+        chunk: &mut Chunk,
+        x: i32,
+        surface_y: i32,
+        z: i32,
+        world_x: i32,
+        world_z: i32,
+    ) {
+        let noise_seed = ((world_x as u32)
+            .wrapping_mul(374761393)
+            .wrapping_add((world_z as u32).wrapping_mul(668265263)))
+            % 1000;
+        let noise_value = noise_seed as f32 / 1000.0;
+
+        // Deserts are mostly empty
+        if noise_value > 0.99 {
+            let plant_type_seed = ((world_x as u32)
+                .wrapping_mul(109739919)
+                .wrapping_add((world_z as u32).wrapping_mul(715827883)))
+                % 100;
+
+            let plant = if plant_type_seed < 35 {
+                BlockType::ShortDryGrass
+            } else if plant_type_seed < 65 {
+                BlockType::TallDryGrass
+            } else {
+                BlockType::DeadBush
+            };
+
+            chunk.set_block(x, surface_y, z, plant);
+        }
+    }
+}
+
 impl TreeGenerator {
     pub fn new() -> Self {
         TreeGenerator {

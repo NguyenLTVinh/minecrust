@@ -10,7 +10,6 @@ pub struct Biome {
     pub c_filler: BlockType,
     pub c_stone: BlockType,
     pub c_water: BlockType,
-    pub c_river_water: BlockType,
     pub depth_top: i32,
     pub depth_filler: i32,
     pub heat_point: f32,
@@ -30,7 +29,6 @@ impl Biome {
         c_filler: BlockType,
         c_stone: BlockType,
         c_water: BlockType,
-        c_river_water: BlockType,
         depth_top: i32,
         depth_filler: i32,
         heat_point: f32,
@@ -45,7 +43,6 @@ impl Biome {
             c_filler,
             c_stone,
             c_water,
-            c_river_water,
             depth_top,
             depth_filler,
             heat_point,
@@ -85,7 +82,6 @@ impl BiomeManager {
             BlockType::Dirt,
             BlockType::Stone,
             BlockType::Water,
-            BlockType::Water,
             1,
             2,
             50.0,
@@ -100,7 +96,6 @@ impl BiomeManager {
             BlockType::Sand,
             BlockType::Sand,
             BlockType::Stone,
-            BlockType::Water,
             BlockType::Water,
             1,
             1,
@@ -117,7 +112,6 @@ impl BiomeManager {
                 BlockType::Grass,
                 BlockType::Dirt,
                 BlockType::Stone,
-                BlockType::Water,
                 BlockType::Water,
                 1,
                 3,
@@ -136,7 +130,6 @@ impl BiomeManager {
             BlockType::Dirt,
             BlockType::Stone,
             BlockType::Water,
-            BlockType::Water,
             1,
             3,
             -10.0,
@@ -146,28 +139,26 @@ impl BiomeManager {
             16,
         ));
 
-        self.register(Biome::new(
-            "tundra",
-            BlockType::Snow,
-            BlockType::Snow,
-            BlockType::Stone,
-            BlockType::Water,
-            BlockType::Water,
-            1,
-            2,
-            -20.0,
-            40.0,
-            0,
-            40,
-            16,
-        ));
+        // self.register(Biome::new(
+        //     "tundra",
+        //     BlockType::Snow,
+        //     BlockType::Snow,
+        //     BlockType::Stone,
+        //     BlockType::Water,
+        //     1,
+        //     2,
+        //     -20.0,
+        //     40.0,
+        //     0,
+        //     40,
+        //     16,
+        // ));
 
         self.register(Biome::new(
             "oak_forest",
             BlockType::Grass,
             BlockType::Dirt,
             BlockType::Stone,
-            BlockType::Water,
             BlockType::Water,
             1,
             3,
@@ -183,7 +174,6 @@ impl BiomeManager {
             BlockType::Grass,
             BlockType::Dirt,
             BlockType::Stone,
-            BlockType::Water,
             BlockType::Water,
             1,
             3,
@@ -366,7 +356,7 @@ pub fn generate_snow(
 
                 if adjusted_factor > 0.5 {
                     match block {
-                        BlockType::Grass => {
+                        BlockType::Grass | BlockType::Podzol => {
                             let replace_seed = ((world_x * 9876 + world_z * 5432) as u32) % 100;
 
                             if replace_seed < 30 && adjusted_factor > 0.7 {

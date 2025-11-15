@@ -1,9 +1,7 @@
 use crate::biome;
-use crate::block::{BlockType, FaceDirection};
+use crate::block::BlockType;
 use crate::decoration::DecorationGenerator;
-use crate::mesh_builder::{BlockDimensions, MeshBuilder};
 use crate::terrain::TerrainGenerator;
-use crate::texture::TextureAtlas;
 use crate::tree_generator::TreeGenerator;
 use gl::types::*;
 use std::mem;
@@ -183,113 +181,4 @@ impl Drop for ChunkMesh {
             gl::DeleteBuffers(1, &self.vbo);
         }
     }
-}
-
-pub fn generate_chunk_mesh(chunk: &Chunk, atlas: &TextureAtlas) -> Vec<f32> {
-    let mut vertices = Vec::new();
-
-    for x in 0..CHUNK_SIZE {
-        for y in 0..CHUNK_HEIGHT {
-            for z in 0..CHUNK_SIZE {
-                let block = chunk.get_block(x, y, z);
-                if block == BlockType::Air {
-                    continue;
-                }
-
-                let wx = (chunk.pos.x * CHUNK_SIZE + x) as f32;
-                let wy = y as f32;
-                let wz = (chunk.pos.z * CHUNK_SIZE + z) as f32;
-
-                if block == BlockType::SnowLayer {
-                    let height = 0.125;
-                    let tex_coords = atlas.get_tex_coords(block, FaceDirection::Top);
-                    let tint = atlas.get_tint(block);
-                    MeshBuilder::add_snow_layer(
-                        &mut vertices,
-                        wx,
-                        wy,
-                        wz,
-                        height,
-                        tex_coords,
-                        tint,
-                    );
-                    continue;
-                }
-
-                if block.is_decorative() {
-                    let tex_coords = atlas.get_tex_coords(block, FaceDirection::Top);
-                    let tint = atlas.get_tint(block);
-                    MeshBuilder::add_cross_plant(&mut vertices, wx, wy, wz, tex_coords, tint);
-                    continue;
-                }
-
-                if block == BlockType::Cactus {
-                    let dims = BlockDimensions::from_pixels(14, 16, 14, true);
-                    let tex_top = atlas.get_tex_coords(block, FaceDirection::Top);
-                    let tex_bottom = atlas.get_tex_coords(block, FaceDirection::Bottom);
-                    let tex_side = atlas.get_tex_coords(block, FaceDirection::Front);
-                    let tint = atlas.get_tint(block);
-                    MeshBuilder::add_scaled_cube(
-                        &mut vertices,
-                        wx,
-                        wy,
-                        wz,
-                        &dims,
-                        tex_top,
-                        tex_bottom,
-                        tex_side,
-                        tint,
-                        true,
-                    );
-                    continue;
-                }
-
-                let faces = [
-                    (FaceDirection::Top, 0, 1, 0),
-                    (FaceDirection::Bottom, 0, -1, 0),
-                    (FaceDirection::Front, 0, 0, 1),
-                    (FaceDirection::Back, 0, 0, -1),
-                    (FaceDirection::Right, 1, 0, 0),
-                    (FaceDirection::Left, -1, 0, 0),
-                ];
-
-                for (face_dir, dx, dy, dz) in faces {
-                    let adjacent = chunk.get_block(x + dx, y + dy, z + dz);
-
-                    let should_render = if block == BlockType::Water {
-                        adjacent == BlockType::Air
-                    } else {
-                        adjacent.is_transparent()
-                    };
-
-                    if should_render {
-                        let tex_coords = atlas.get_tex_coords(block, face_dir);
-                        let tint = match block {
-                            BlockType::Grass | BlockType::GrassSnowy => {
-                                if face_dir == FaceDirection::Top {
-                                    atlas.get_tint(block)
-                                } else {
-                                    [1.0, 1.0, 1.0]
-                                }
-                            }
-                            _ => atlas.get_tint(block),
-                        };
-                        MeshBuilder::add_face(
-                            &mut vertices,
-                            wx,
-                            wy,
-                            wz,
-                            dx,
-                            dy,
-                            dz,
-                            tex_coords,
-                            tint,
-                        );
-                    }
-                }
-            }
-        }
-    }
-
-    vertices
 }

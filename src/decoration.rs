@@ -12,10 +12,6 @@ pub enum FrequencyTier {
 pub struct DecorationGenerator;
 
 impl DecorationGenerator {
-    pub fn new() -> Self {
-        DecorationGenerator
-    }
-
     fn get_frequency_threshold(base_threshold: f32, tier: FrequencyTier) -> f32 {
         match tier {
             FrequencyTier::Frequent => base_threshold,

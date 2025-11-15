@@ -36,11 +36,43 @@ pub enum BlockType {
     CactusFlower,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RenderType {
+    FullCube,
+    ScaledCube,
+    CrossPlant,
+}
+
+#[derive(Clone, Copy)]
+pub struct BlockDimensions {
+    pub width_pixels: u32,
+    pub height_pixels: u32,
+    pub length_pixels: u32,
+}
+
+impl BlockDimensions {
+    pub fn full() -> Self {
+        BlockDimensions {
+            width_pixels: 16,
+            height_pixels: 16,
+            length_pixels: 16,
+        }
+    }
+
+    pub fn from_pixels(width: u32, height: u32, length: u32) -> Self {
+        BlockDimensions {
+            width_pixels: width,
+            height_pixels: height,
+            length_pixels: length,
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 pub struct BlockProperties {
     pub is_transparent: bool,
-    pub is_decorative: bool,
-    pub is_full_block: bool,
+    pub render_type: RenderType,
+    pub dimensions: BlockDimensions,
 }
 
 pub struct BlockRegistry {
@@ -50,26 +82,6 @@ pub struct BlockRegistry {
 impl BlockRegistry {
     pub fn new() -> Self {
         let mut properties = std::collections::HashMap::new();
-
-        let decorative_blocks = [
-            BlockType::BrownMushroom,
-            BlockType::Poppy,
-            BlockType::ShortGrass,
-            BlockType::TallGrassTop,
-            BlockType::DeadBush,
-            BlockType::RedMushroom,
-            BlockType::TallDryGrass,
-            BlockType::TorchFlower,
-            BlockType::PinkTulip,
-            BlockType::ShortDryGrass,
-            BlockType::TallGrassBottom,
-            BlockType::Fern,
-            BlockType::LargeFernTop,
-            BlockType::LargeFernBottom,
-            BlockType::SweetBerryBushStage1,
-            BlockType::SweetBerryBushStage2,
-            BlockType::CactusFlower,
-        ];
 
         let transparent_blocks = [
             BlockType::Air,
@@ -95,27 +107,7 @@ impl BlockRegistry {
             BlockType::SweetBerryBushStage1,
             BlockType::SweetBerryBushStage2,
             BlockType::CactusFlower,
-        ];
-
-        let non_full_blocks = [
-            BlockType::BrownMushroom,
-            BlockType::Poppy,
-            BlockType::ShortGrass,
-            BlockType::TallGrassTop,
-            BlockType::DeadBush,
-            BlockType::RedMushroom,
-            BlockType::TallDryGrass,
-            BlockType::TorchFlower,
-            BlockType::PinkTulip,
-            BlockType::ShortDryGrass,
-            BlockType::TallGrassBottom,
-            BlockType::Fern,
-            BlockType::LargeFernTop,
-            BlockType::LargeFernBottom,
-            BlockType::SweetBerryBushStage1,
-            BlockType::SweetBerryBushStage2,
-            BlockType::SnowLayer,
-            BlockType::CactusFlower,
+            BlockType::Cactus,
         ];
 
         let all_blocks = [
@@ -156,21 +148,51 @@ impl BlockRegistry {
         ];
 
         for block in all_blocks.iter() {
-            let is_decorative = decorative_blocks.contains(block);
             let is_transparent = transparent_blocks.contains(block);
-            let is_full_block = !non_full_blocks.contains(block);
+            let (render_type, dimensions) = Self::get_render_config(*block);
 
             properties.insert(
                 *block,
                 BlockProperties {
                     is_transparent,
-                    is_decorative,
-                    is_full_block,
+                    render_type,
+                    dimensions,
                 },
             );
         }
 
         BlockRegistry { properties }
+    }
+
+    fn get_render_config(block: BlockType) -> (RenderType, BlockDimensions) {
+        match block {
+            BlockType::SnowLayer => (
+                RenderType::ScaledCube,
+                BlockDimensions::from_pixels(16, 2, 16),
+            ),
+            BlockType::Cactus => (
+                RenderType::ScaledCube,
+                BlockDimensions::from_pixels(14, 16, 14),
+            ),
+            BlockType::BrownMushroom
+            | BlockType::Poppy
+            | BlockType::ShortGrass
+            | BlockType::TallGrassTop
+            | BlockType::DeadBush
+            | BlockType::RedMushroom
+            | BlockType::TallDryGrass
+            | BlockType::TorchFlower
+            | BlockType::PinkTulip
+            | BlockType::ShortDryGrass
+            | BlockType::TallGrassBottom
+            | BlockType::Fern
+            | BlockType::LargeFernTop
+            | BlockType::LargeFernBottom
+            | BlockType::SweetBerryBushStage1
+            | BlockType::SweetBerryBushStage2
+            | BlockType::CactusFlower => (RenderType::CrossPlant, BlockDimensions::full()),
+            _ => (RenderType::FullCube, BlockDimensions::full()),
+        }
     }
 
     pub fn get_properties(&self, block: BlockType) -> BlockProperties {
@@ -179,35 +201,27 @@ impl BlockRegistry {
             .copied()
             .unwrap_or(BlockProperties {
                 is_transparent: true,
-                is_decorative: false,
-                is_full_block: false,
+                render_type: RenderType::FullCube,
+                dimensions: BlockDimensions::full(),
             })
     }
 
     pub fn is_transparent(&self, block: BlockType) -> bool {
         self.get_properties(block).is_transparent
     }
-
-    pub fn is_decorative(&self, block: BlockType) -> bool {
-        self.get_properties(block).is_decorative
-    }
-
-    pub fn is_full_block(&self, block: BlockType) -> bool {
-        self.get_properties(block).is_full_block
-    }
 }
 
 impl BlockType {
-    pub fn is_decorative(&self) -> bool {
-        BLOCK_REGISTRY.is_decorative(*self)
-    }
-
-    pub fn is_full_block(&self) -> bool {
-        BLOCK_REGISTRY.is_full_block(*self)
+    pub fn get_properties(&self) -> BlockProperties {
+        BLOCK_REGISTRY.get_properties(*self)
     }
 
     pub fn is_transparent(&self) -> bool {
         BLOCK_REGISTRY.is_transparent(*self)
+    }
+
+    pub fn is_full_block(&self) -> bool {
+        self.get_properties().render_type == RenderType::FullCube
     }
 }
 

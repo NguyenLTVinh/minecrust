@@ -5,7 +5,6 @@ const CHUNK_HEIGHT: i32 = 160;
 const MAX_MOUNTAIN_HEIGHT: i32 = CHUNK_HEIGHT - 10;
 
 pub struct MapGenerator {
-    pub seed: u32,
     pub water_level: i32,
     pub mount_zero_level: i32,
 
@@ -108,9 +107,8 @@ impl MapGenerator {
         humidity_blend.octaves = 2;
 
         MapGenerator {
-            seed,
             water_level: 1,
-            mount_zero_level: 35,
+            mount_zero_level: 25,
 
             terrain_base,
             terrain_alt,
@@ -277,7 +275,7 @@ impl TerrainGenerator {
         }
     }
 
-    pub fn get_terrain_height(&self, world_x: i32, world_z: i32) -> i32 {
+    pub fn _get_terrain_height(&self, world_x: i32, world_z: i32) -> i32 {
         self.mapgen.get_terrain_height(world_x, world_z)
     }
 

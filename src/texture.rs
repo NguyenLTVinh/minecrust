@@ -63,6 +63,51 @@ impl TextureCoords {
             v_max,
         }
     }
+
+    pub fn get_uvs_for_face(&self, dx: i32, dy: i32, dz: i32) -> [[f32; 2]; 6] {
+        match (dx, dy, dz) {
+            (-1, 0, 0) => [
+                [self.u_max, self.v_max],
+                [self.u_min, self.v_max],
+                [self.u_min, self.v_min],
+                [self.u_max, self.v_max],
+                [self.u_min, self.v_min],
+                [self.u_max, self.v_min],
+            ],
+            (1, 0, 0) => [
+                [self.u_min, self.v_max],
+                [self.u_min, self.v_min],
+                [self.u_max, self.v_min],
+                [self.u_min, self.v_max],
+                [self.u_max, self.v_min],
+                [self.u_max, self.v_max],
+            ],
+            (0, 0, -1) => [
+                [self.u_min, self.v_max],
+                [self.u_max, self.v_max],
+                [self.u_max, self.v_min],
+                [self.u_min, self.v_max],
+                [self.u_max, self.v_min],
+                [self.u_min, self.v_min],
+            ],
+            (0, 0, 1) => [
+                [self.u_min, self.v_max],
+                [self.u_min, self.v_min],
+                [self.u_max, self.v_min],
+                [self.u_min, self.v_max],
+                [self.u_max, self.v_min],
+                [self.u_max, self.v_max],
+            ],
+            _ => [
+                [self.u_min, self.v_min],
+                [self.u_min, self.v_max],
+                [self.u_max, self.v_max],
+                [self.u_min, self.v_min],
+                [self.u_max, self.v_max],
+                [self.u_max, self.v_min],
+            ],
+        }
+    }
 }
 
 pub struct TextureAtlas {

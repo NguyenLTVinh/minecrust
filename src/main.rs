@@ -13,9 +13,10 @@ mod tree_generator;
 
 use camera::Camera;
 use cgmath::{Deg, InnerSpace, Matrix, perspective};
-use chunk::{CHUNK_SIZE, Chunk, ChunkMesh, ChunkPos, RENDER_DISTANCE, generate_chunk_mesh};
+use chunk::{CHUNK_SIZE, Chunk, ChunkMesh, ChunkPos, RENDER_DISTANCE};
 use gl::types::*;
 use glfw::{Action, Context, Key};
+use mesh_builder::MeshBuilder;
 use shader::{FRAGMENT_SHADER, VERTEX_SHADER, compile_shader, link_program};
 use sky::{SKY_FRAGMENT_SHADER, SKY_VERTEX_SHADER, Sky, get_wicked_time_of_day};
 use std::collections::HashMap;
@@ -39,14 +40,12 @@ struct ChunkGenerationResult {
 struct Game {
     chunks: HashMap<ChunkPos, Chunk>,
     camera: Camera,
-    terrain_generator: Arc<TerrainGenerator>,
     shader_program: GLuint,
     sky_shader_program: GLuint,
     texture_atlas: TextureAtlas,
     last_mouse_x: f64,
     last_mouse_y: f64,
     first_mouse: bool,
-    tree_generator: TreeGenerator,
     sky: Sky,
     chunk_request_tx: UnboundedSender<ChunkGenerationRequest>,
     chunk_result_rx: UnboundedReceiver<ChunkGenerationResult>,
@@ -96,14 +95,12 @@ impl Game {
         Ok(Game {
             chunks: HashMap::new(),
             camera: Camera::new(),
-            terrain_generator,
             shader_program,
             sky_shader_program,
             texture_atlas,
             last_mouse_x: 400.0,
             last_mouse_y: 300.0,
             first_mouse: true,
-            tree_generator: TreeGenerator::new(),
             sky,
             chunk_request_tx,
             chunk_result_rx,
@@ -160,7 +157,7 @@ impl Game {
                 let pos = ChunkPos { x, z };
                 if let Some(chunk) = self.chunks.get_mut(&pos) {
                     if chunk.mesh.is_none() {
-                        let vertices = generate_chunk_mesh(chunk, &self.texture_atlas);
+                        let vertices = MeshBuilder::build_chunk_mesh(chunk, &self.texture_atlas);
                         if !vertices.is_empty() {
                             chunk.mesh = Some(ChunkMesh::new(&vertices));
                         }

@@ -1,7 +1,10 @@
+use crate::biome;
 use crate::block::{BlockType, FaceDirection};
-use crate::decoration::{DecorationGenerator, TreeGenerator, add_snow_layer, generate_snow};
+use crate::decoration::DecorationGenerator;
+use crate::mesh_builder::MeshBuilder;
 use crate::terrain::TerrainGenerator;
-use crate::texture::{TextureAtlas, TextureCoords};
+use crate::texture::TextureAtlas;
+use crate::tree_generator::TreeGenerator;
 use gl::types::*;
 use std::mem;
 use std::ptr;
@@ -66,10 +69,10 @@ impl Chunk {
             }
         }
 
-        TreeGenerator::generate_surface_variants(&mut chunk, terrain_gen);
-        tree_generator.spawn_trees_for_chunk(&mut chunk, terrain_gen);
         let test_biome = terrain_gen.get_biome_at(pos.x * CHUNK_SIZE, 32, pos.z * CHUNK_SIZE);
-        generate_snow(&mut chunk, 80, 95, &test_biome.name);
+        biome::generate_surface_variants(&mut chunk, terrain_gen);
+        tree_generator.spawn_trees_for_chunk(&mut chunk, terrain_gen);
+        biome::generate_snow(&mut chunk, 80, 95, &test_biome.name);
         DecorationGenerator::generate_decorations(&mut chunk, &test_biome.name);
 
         chunk
@@ -201,14 +204,22 @@ pub fn generate_chunk_mesh(chunk: &Chunk, atlas: &TextureAtlas) -> Vec<f32> {
                     let height = 0.125;
                     let tex_coords = atlas.get_tex_coords(block, FaceDirection::Top);
                     let tint = atlas.get_tint(block);
-                    add_snow_layer(&mut vertices, wx, wy, wz, height, tex_coords, tint);
+                    MeshBuilder::add_snow_layer(
+                        &mut vertices,
+                        wx,
+                        wy,
+                        wz,
+                        height,
+                        tex_coords,
+                        tint,
+                    );
                     continue;
                 }
 
                 if block.is_decorative() {
                     let tex_coords = atlas.get_tex_coords(block, FaceDirection::Top);
                     let tint = atlas.get_tint(block);
-                    add_cross_plant(&mut vertices, wx, wy, wz, tex_coords, tint);
+                    MeshBuilder::add_cross_plant(&mut vertices, wx, wy, wz, tex_coords, tint);
                     continue;
                 }
 
@@ -242,7 +253,17 @@ pub fn generate_chunk_mesh(chunk: &Chunk, atlas: &TextureAtlas) -> Vec<f32> {
                             }
                             _ => atlas.get_tint(block),
                         };
-                        add_face(&mut vertices, wx, wy, wz, dx, dy, dz, tex_coords, tint);
+                        MeshBuilder::add_face(
+                            &mut vertices,
+                            wx,
+                            wy,
+                            wz,
+                            dx,
+                            dy,
+                            dz,
+                            tex_coords,
+                            tint,
+                        );
                     }
                 }
             }
@@ -250,193 +271,4 @@ pub fn generate_chunk_mesh(chunk: &Chunk, atlas: &TextureAtlas) -> Vec<f32> {
     }
 
     vertices
-}
-
-fn add_face(
-    vertices: &mut Vec<f32>,
-    x: f32,
-    y: f32,
-    z: f32,
-    dx: i32,
-    dy: i32,
-    dz: i32,
-    tex: TextureCoords,
-    tint: [f32; 3],
-) {
-    let normal = [dx as f32, dy as f32, dz as f32];
-
-    let uvs = match (dx, dy, dz) {
-        (-1, 0, 0) => [
-            [tex.u_max, tex.v_max],
-            [tex.u_min, tex.v_max],
-            [tex.u_min, tex.v_min],
-            [tex.u_max, tex.v_max],
-            [tex.u_min, tex.v_min],
-            [tex.u_max, tex.v_min],
-        ],
-        (1, 0, 0) => [
-            [tex.u_min, tex.v_max],
-            [tex.u_min, tex.v_min],
-            [tex.u_max, tex.v_min],
-            [tex.u_min, tex.v_max],
-            [tex.u_max, tex.v_min],
-            [tex.u_max, tex.v_max],
-        ],
-        (0, 0, -1) => [
-            [tex.u_min, tex.v_max],
-            [tex.u_max, tex.v_max],
-            [tex.u_max, tex.v_min],
-            [tex.u_min, tex.v_max],
-            [tex.u_max, tex.v_min],
-            [tex.u_min, tex.v_min],
-        ],
-        (0, 0, 1) => [
-            [tex.u_min, tex.v_max],
-            [tex.u_min, tex.v_min],
-            [tex.u_max, tex.v_min],
-            [tex.u_min, tex.v_max],
-            [tex.u_max, tex.v_min],
-            [tex.u_max, tex.v_max],
-        ],
-        _ => [
-            [tex.u_min, tex.v_min],
-            [tex.u_min, tex.v_max],
-            [tex.u_max, tex.v_max],
-            [tex.u_min, tex.v_min],
-            [tex.u_max, tex.v_max],
-            [tex.u_max, tex.v_min],
-        ],
-    };
-
-    #[rustfmt::skip]
-    let verts = match (dx, dy, dz) {
-        (0, 1, 0) => vec![  // Top
-            x,         y + 1.0, z,
-            x,         y + 1.0, z + 1.0,
-            x + 1.0,   y + 1.0, z + 1.0,
-            
-            x,         y + 1.0, z,
-            x + 1.0,   y + 1.0, z + 1.0,
-            x + 1.0,   y + 1.0, z,
-        ],
-        (0, -1, 0) => vec![  // Bottom
-            x,         y, z,
-            x + 1.0,   y, z,
-            x + 1.0,   y, z + 1.0,
-            
-            x,         y, z,
-            x + 1.0,   y, z + 1.0,
-            x,         y, z + 1.0,
-        ],
-        (0, 0, 1) => vec![  // Front
-            x,         y,       z + 1.0,
-            x,         y + 1.0, z + 1.0,
-            x + 1.0,   y + 1.0, z + 1.0,
-            
-            x,         y,       z + 1.0,
-            x + 1.0,   y + 1.0, z + 1.0,
-            x + 1.0,   y,       z + 1.0,
-        ],
-        (0, 0, -1) => vec![  // Back
-            x,         y,       z,
-            x + 1.0,   y,       z,
-            x + 1.0,   y + 1.0, z,
-            
-            x,         y,       z,
-            x + 1.0,   y + 1.0, z,
-            x,         y + 1.0, z,
-        ],
-        (1, 0, 0) => vec![  // Right
-            x + 1.0,   y,       z,
-            x + 1.0,   y + 1.0, z,
-            x + 1.0,   y + 1.0, z + 1.0,
-            
-            x + 1.0,   y,       z,
-            x + 1.0,   y + 1.0, z + 1.0,
-            x + 1.0,   y,       z + 1.0,
-        ],
-        (-1, 0, 0) => vec![  // Left
-            x, y,       z,
-            x, y,       z + 1.0,
-            x, y + 1.0, z + 1.0,
-            
-            x, y,       z,
-            x, y + 1.0, z + 1.0,
-            x, y + 1.0, z,
-        ],
-        _ => vec![],
-    };
-
-    for (i, pos_idx) in (0..verts.len()).step_by(3).enumerate() {
-        vertices.extend_from_slice(&verts[pos_idx..pos_idx + 3]);
-        vertices.extend_from_slice(&uvs[i]);
-        vertices.extend_from_slice(&tint);
-        vertices.extend_from_slice(&normal);
-    }
-}
-
-fn add_cross_plant(
-    vertices: &mut Vec<f32>,
-    x: f32,
-    y: f32,
-    z: f32,
-    tex: TextureCoords,
-    tint: [f32; 3],
-) {
-    let cx = x + 0.5;
-    let cz = z + 0.5;
-
-    let normal1 = [0.7071, 0.0, 0.7071];
-    #[rustfmt::skip]
-    let square1 = vec![
-        cx - 0.5, y,       cz - 0.5,
-        cx - 0.5, y + 1.0, cz - 0.5,
-        cx + 0.5, y + 1.0, cz + 0.5,
-        
-        cx - 0.5, y,       cz - 0.5,
-        cx + 0.5, y + 1.0, cz + 0.5,
-        cx + 0.5, y,       cz + 0.5,
-    ];
-    let uvs1 = [
-        [tex.u_min, tex.v_max],
-        [tex.u_min, tex.v_min],
-        [tex.u_max, tex.v_min],
-        [tex.u_min, tex.v_max],
-        [tex.u_max, tex.v_min],
-        [tex.u_max, tex.v_max],
-    ];
-
-    for (i, pos_idx) in (0..square1.len()).step_by(3).enumerate() {
-        vertices.extend_from_slice(&square1[pos_idx..pos_idx + 3]);
-        vertices.extend_from_slice(&uvs1[i]);
-        vertices.extend_from_slice(&tint);
-        vertices.extend_from_slice(&normal1);
-    }
-
-    let normal2 = [-0.7071, 0.0, 0.7071];
-    #[rustfmt::skip]
-    let square2 = vec![
-        cx + 0.5, y,       cz - 0.5,
-        cx + 0.5, y + 1.0, cz - 0.5,
-        cx - 0.5, y + 1.0, cz + 0.5,
-        
-        cx + 0.5, y,       cz - 0.5,
-        cx - 0.5, y + 1.0, cz + 0.5,
-        cx - 0.5, y,       cz + 0.5,
-    ];
-    let uvs2 = [
-        [tex.u_min, tex.v_max],
-        [tex.u_min, tex.v_min],
-        [tex.u_max, tex.v_min],
-        [tex.u_min, tex.v_max],
-        [tex.u_max, tex.v_min],
-        [tex.u_max, tex.v_max],
-    ];
-
-    for (i, pos_idx) in (0..square2.len()).step_by(3).enumerate() {
-        vertices.extend_from_slice(&square2[pos_idx..pos_idx + 3]);
-        vertices.extend_from_slice(&uvs2[i]);
-        vertices.extend_from_slice(&tint);
-        vertices.extend_from_slice(&normal2);
-    }
 }

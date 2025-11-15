@@ -3,16 +3,17 @@ mod block;
 mod camera;
 mod chunk;
 mod decoration;
+mod mesh_builder;
+mod rng;
 mod shader;
 mod sky;
 mod terrain;
 mod texture;
+mod tree_generator;
 
 use camera::Camera;
 use cgmath::{Deg, InnerSpace, Matrix, perspective};
 use chunk::{CHUNK_SIZE, Chunk, ChunkMesh, ChunkPos, RENDER_DISTANCE, generate_chunk_mesh};
-use crossbeam_channel::{Receiver, Sender, unbounded};
-use decoration::TreeGenerator;
 use gl::types::*;
 use glfw::{Action, Context, Key};
 use shader::{FRAGMENT_SHADER, VERTEX_SHADER, compile_shader, link_program};
@@ -20,9 +21,11 @@ use sky::{SKY_FRAGMENT_SHADER, SKY_VERTEX_SHADER, Sky, get_wicked_time_of_day};
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::ffi::CString;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use terrain::TerrainGenerator;
 use texture::TextureAtlas;
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
+use tree_generator::TreeGenerator;
 
 struct ChunkGenerationRequest {
     pos: ChunkPos,
@@ -45,8 +48,8 @@ struct Game {
     first_mouse: bool,
     tree_generator: TreeGenerator,
     sky: Sky,
-    chunk_request_tx: Sender<ChunkGenerationRequest>,
-    chunk_result_rx: Receiver<ChunkGenerationResult>,
+    chunk_request_tx: UnboundedSender<ChunkGenerationRequest>,
+    chunk_result_rx: UnboundedReceiver<ChunkGenerationResult>,
     pending_chunks: HashSet<ChunkPos>,
 }
 
@@ -56,24 +59,36 @@ impl Game {
         let sky = Sky::new(sky_shader_program)?;
         let terrain_generator = Arc::new(TerrainGenerator::new(42));
 
-        let (chunk_request_tx, chunk_request_rx) = unbounded::<ChunkGenerationRequest>();
-        let (chunk_result_tx, chunk_result_rx) = unbounded::<ChunkGenerationResult>();
+        let (chunk_request_tx, chunk_request_rx) = unbounded_channel::<ChunkGenerationRequest>();
+        let (chunk_result_tx, chunk_result_rx) = unbounded_channel::<ChunkGenerationResult>();
 
-        let num_workers = 4;
+        let chunk_request_rx = Arc::new(Mutex::new(chunk_request_rx));
+
+        let num_workers = 8;
         for _ in 0..num_workers {
-            let request_rx = chunk_request_rx.clone();
+            let request_rx = Arc::clone(&chunk_request_rx);
             let result_tx = chunk_result_tx.clone();
             let terrain_gen = Arc::clone(&terrain_generator);
 
-            std::thread::spawn(move || {
+            tokio::task::spawn_blocking(move || {
                 let mut local_tree_gen = TreeGenerator::new();
 
-                while let Ok(request) = request_rx.recv() {
-                    let chunk = Chunk::new(request.pos, &terrain_gen, &mut local_tree_gen);
-                    let _ = result_tx.send(ChunkGenerationResult {
-                        pos: request.pos,
-                        chunk,
-                    });
+                loop {
+                    let request = {
+                        let mut rx = request_rx.lock().unwrap();
+                        rx.blocking_recv()
+                    };
+
+                    match request {
+                        Some(req) => {
+                            let chunk = Chunk::new(req.pos, &terrain_gen, &mut local_tree_gen);
+                            let _ = result_tx.send(ChunkGenerationResult {
+                                pos: req.pos,
+                                chunk,
+                            });
+                        }
+                        None => break,
+                    }
                 }
             });
         }
@@ -103,7 +118,7 @@ impl Game {
         }
     }
 
-    fn update_chunks(&mut self) {
+    async fn update_chunks(&mut self) {
         let player_chunk_x = (self.camera.position.x / CHUNK_SIZE as f32).floor() as i32;
         let player_chunk_z = (self.camera.position.z / CHUNK_SIZE as f32).floor() as i32;
 
@@ -117,9 +132,15 @@ impl Game {
             }
         }
 
-        while let Ok(result) = self.chunk_result_rx.try_recv() {
-            self.chunks.insert(result.pos, result.chunk);
-            self.pending_chunks.remove(&result.pos);
+        // Receive all available chunk results
+        loop {
+            match self.chunk_result_rx.try_recv() {
+                Ok(result) => {
+                    self.chunks.insert(result.pos, result.chunk);
+                    self.pending_chunks.remove(&result.pos);
+                }
+                Err(_) => break,
+            }
         }
 
         let unload_distance = RENDER_DISTANCE + 8;
@@ -277,7 +298,8 @@ impl Drop for Game {
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
     glfw.window_hint(glfw::WindowHint::ContextVersion(3, 3));
     glfw.window_hint(glfw::WindowHint::OpenGlProfile(
@@ -332,7 +354,7 @@ fn main() {
 
         game.handle_input(&mut window, delta_time);
         game.sky.day_night_cycle.update(delta_time);
-        game.update_chunks();
+        game.update_chunks().await;
 
         let sky_color = Sky::get_sky_color(game.sky.day_night_cycle.time);
         unsafe {

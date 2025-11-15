@@ -108,11 +108,15 @@ impl TextureAtlas {
         let fern = load_texture("block/fern.png");
         let large_fern_top = load_texture("block/large_fern_top.png");
         let large_fern_bottom = load_texture("block/large_fern_bottom.png");
-        let sweet_berry_stage1 = load_texture("block/sweet_berry_bush_stage3.png");
-        let sweet_berry_stage2 = load_texture("block/sweet_berry_bush_stage4.png");
+        let sweet_berry_stage1 = load_texture("block/sweet_berry_bush_stage2.png");
+        let sweet_berry_stage2 = load_texture("block/sweet_berry_bush_stage3.png");
+        let cactus_side = load_texture("block/cactus_side.png");
+        let cactus_top = load_texture("block/cactus_top.png");
+        let cactus_bottom = load_texture("block/cactus_bottom.png");
+        let cactus_flower = load_texture("block/cactus_flower.png");
 
         let atlas_width = TEXTURE_SIZE * 8;
-        let atlas_height = TEXTURE_SIZE * 5;
+        let atlas_height = TEXTURE_SIZE * 6;
         let mut atlas = RgbaImage::new(atlas_width, atlas_height);
 
         let textures = vec![
@@ -151,6 +155,10 @@ impl TextureAtlas {
             large_fern_bottom,
             sweet_berry_stage1,
             sweet_berry_stage2,
+            cactus_side,
+            cactus_top,
+            cactus_bottom,
+            cactus_flower,
         ];
         for (i, tex) in textures.iter().enumerate() {
             let tex = tex.to_rgba8();
@@ -275,6 +283,11 @@ impl TextureAtlas {
             BlockType::LargeFernBottom => 32,
             BlockType::SweetBerryBushStage1 => 33,
             BlockType::SweetBerryBushStage2 => 34,
+            BlockType::Cactus => match face {
+                FaceDirection::Top | FaceDirection::Bottom => 36,
+                _ => 35,
+            },
+            BlockType::CactusFlower => 38,
             BlockType::Air => 0,
         };
         TextureCoords::new(index, self.atlas_width, self.atlas_height)

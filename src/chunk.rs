@@ -1,7 +1,7 @@
 use crate::biome;
 use crate::block::{BlockType, FaceDirection};
 use crate::decoration::DecorationGenerator;
-use crate::mesh_builder::MeshBuilder;
+use crate::mesh_builder::{BlockDimensions, MeshBuilder};
 use crate::terrain::TerrainGenerator;
 use crate::texture::TextureAtlas;
 use crate::tree_generator::TreeGenerator;
@@ -220,6 +220,27 @@ pub fn generate_chunk_mesh(chunk: &Chunk, atlas: &TextureAtlas) -> Vec<f32> {
                     let tex_coords = atlas.get_tex_coords(block, FaceDirection::Top);
                     let tint = atlas.get_tint(block);
                     MeshBuilder::add_cross_plant(&mut vertices, wx, wy, wz, tex_coords, tint);
+                    continue;
+                }
+
+                if block == BlockType::Cactus {
+                    let dims = BlockDimensions::from_pixels(14, 16, 14, true);
+                    let tex_top = atlas.get_tex_coords(block, FaceDirection::Top);
+                    let tex_bottom = atlas.get_tex_coords(block, FaceDirection::Bottom);
+                    let tex_side = atlas.get_tex_coords(block, FaceDirection::Front);
+                    let tint = atlas.get_tint(block);
+                    MeshBuilder::add_scaled_cube(
+                        &mut vertices,
+                        wx,
+                        wy,
+                        wz,
+                        &dims,
+                        tex_top,
+                        tex_bottom,
+                        tex_side,
+                        tint,
+                        true,
+                    );
                     continue;
                 }
 

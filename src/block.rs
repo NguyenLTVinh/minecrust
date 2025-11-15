@@ -32,6 +32,8 @@ pub enum BlockType {
     LargeFernBottom,
     SweetBerryBushStage1,
     SweetBerryBushStage2,
+    Cactus,
+    CactusFlower,
 }
 
 #[derive(Clone, Copy)]
@@ -66,6 +68,7 @@ impl BlockRegistry {
             BlockType::LargeFernBottom,
             BlockType::SweetBerryBushStage1,
             BlockType::SweetBerryBushStage2,
+            BlockType::CactusFlower,
         ];
 
         let transparent_blocks = [
@@ -91,6 +94,7 @@ impl BlockRegistry {
             BlockType::LargeFernBottom,
             BlockType::SweetBerryBushStage1,
             BlockType::SweetBerryBushStage2,
+            BlockType::CactusFlower,
         ];
 
         let non_full_blocks = [
@@ -111,6 +115,7 @@ impl BlockRegistry {
             BlockType::SweetBerryBushStage1,
             BlockType::SweetBerryBushStage2,
             BlockType::SnowLayer,
+            BlockType::CactusFlower,
         ];
 
         let all_blocks = [
@@ -146,6 +151,8 @@ impl BlockRegistry {
             BlockType::LargeFernBottom,
             BlockType::SweetBerryBushStage1,
             BlockType::SweetBerryBushStage2,
+            BlockType::Cactus,
+            BlockType::CactusFlower,
         ];
 
         for block in all_blocks.iter() {

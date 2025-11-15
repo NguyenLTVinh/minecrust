@@ -8,6 +8,7 @@ pub enum TreeType {
     Oak,
     Spruce,
     Birch,
+    Cactus,
 }
 
 pub struct TreeGenerator {
@@ -67,6 +68,7 @@ impl TreeGenerator {
                             "snowy_taiga" => (true, BlockType::GrassSnowy, 0.96, TreeType::Spruce),
                             "oak_forest" => (true, BlockType::Grass, 0.94, TreeType::Oak),
                             "birch_forest" => (true, BlockType::Grass, 0.94, TreeType::Birch),
+                            "desert" => (true, BlockType::Sand, 0.99, TreeType::Cactus),
                             _ => (false, BlockType::Air, 0.98, TreeType::Oak),
                         };
 
@@ -102,6 +104,7 @@ pub fn generate_tree(
         TreeType::Oak => generate_oak_tree(chunk, x, base_y, z, seed),
         TreeType::Spruce => generate_spruce_tree(chunk, x, base_y, z, seed),
         TreeType::Birch => generate_birch_tree(chunk, x, base_y, z, seed),
+        TreeType::Cactus => generate_cactus(chunk, x, base_y, z, seed),
     }
 }
 
@@ -396,6 +399,38 @@ fn generate_spruce_tree(chunk: &mut Chunk, x: i32, base_y: i32, z: i32, seed: u3
                         chunk.set_block(world_x, world_y, world_z, BlockType::SpruceLeaves);
                     }
                 }
+            }
+        }
+    }
+
+    true
+}
+
+fn generate_cactus(chunk: &mut Chunk, x: i32, base_y: i32, z: i32, seed: u32) -> bool {
+    let rng = SeededRng::from_seed(seed);
+    let trunk_height = 2 + ((rng.next_u32() % 3) as i32);
+
+    for i in 0..trunk_height {
+        let check_y = base_y + i;
+        let current_block = chunk.get_block(x, check_y, z);
+        if current_block != BlockType::Air && !current_block.is_transparent() {
+            return false;
+        }
+    }
+
+    let mut p_y = base_y;
+    for _ in 0..trunk_height {
+        chunk.set_block(x, p_y, z, BlockType::Cactus);
+        p_y += 1;
+    }
+
+    let flower_check = rng.next_f32();
+    if flower_check < 0.3 {
+        let flower_y = base_y + trunk_height;
+        if flower_y < CHUNK_HEIGHT {
+            let current_block = chunk.get_block(x, flower_y, z);
+            if current_block == BlockType::Air || current_block.is_transparent() {
+                chunk.set_block(x, flower_y, z, BlockType::CactusFlower);
             }
         }
     }

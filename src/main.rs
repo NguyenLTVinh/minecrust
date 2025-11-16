@@ -168,14 +168,19 @@ impl Game {
     }
 
     fn handle_input(&mut self, window: &mut glfw::Window, delta_time: f32) {
-        let speed = 15.0 * delta_time;
+        let mut speed = 30.0 * delta_time;
+
+        if window.get_key(Key::LeftControl) == Action::Press {
+            speed *= 2.0;
+        }
+
         let right = self.camera.front.cross(self.camera.up).normalize();
 
         if window.get_key(Key::W) == Action::Press {
-            self.camera.position += self.camera.front * speed;
+            self.camera.position += self.camera.forward * speed;
         }
         if window.get_key(Key::S) == Action::Press {
-            self.camera.position -= self.camera.front * speed;
+            self.camera.position -= self.camera.forward * speed;
         }
         if window.get_key(Key::A) == Action::Press {
             self.camera.position -= right * speed;

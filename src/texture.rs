@@ -159,9 +159,12 @@ impl TextureAtlas {
         let cactus_top = load_texture("block/cactus_top.png");
         let cactus_bottom = load_texture("block/cactus_bottom.png");
         let cactus_flower = load_texture("block/cactus_flower.png");
+        let jungle_log = load_texture("block/jungle_log.png");
+        let jungle_log_top = load_texture("block/jungle_log_top.png");
+        let jungle_leaves = load_texture("block/jungle_leaves.png");
 
         let atlas_width = TEXTURE_SIZE * 8;
-        let atlas_height = TEXTURE_SIZE * 6;
+        let atlas_height = TEXTURE_SIZE * 7;
         let mut atlas = RgbaImage::new(atlas_width, atlas_height);
 
         let textures = vec![
@@ -204,6 +207,9 @@ impl TextureAtlas {
             cactus_top,
             cactus_bottom,
             cactus_flower,
+            jungle_log,
+            jungle_log_top,
+            jungle_leaves,
         ];
         for (i, tex) in textures.iter().enumerate() {
             let tex = tex.to_rgba8();
@@ -333,6 +339,11 @@ impl TextureAtlas {
                 _ => 35,
             },
             BlockType::CactusFlower => 38,
+            BlockType::JungleLog => match face {
+                FaceDirection::Top | FaceDirection::Bottom => 40,
+                _ => 39,
+            },
+            BlockType::JungleLeaves => 41,
             BlockType::Air => 0,
         };
         TextureCoords::new(index, self.atlas_width, self.atlas_height)
@@ -347,6 +358,7 @@ impl TextureAtlas {
             BlockType::OakLeaves
             | BlockType::SpruceLeaves
             | BlockType::BirchLeaves
+            | BlockType::JungleLeaves
             | BlockType::Fern
             | BlockType::LargeFernBottom
             | BlockType::LargeFernTop => self.foliage_color,

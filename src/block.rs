@@ -34,6 +34,8 @@ pub enum BlockType {
     SweetBerryBushStage2,
     Cactus,
     CactusFlower,
+    JungleLog,
+    JungleLeaves,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -101,6 +103,7 @@ impl BlockRegistry {
             BlockType::BirchLeaves,
             BlockType::OakLeaves,
             BlockType::SpruceLeaves,
+            BlockType::JungleLeaves,
             BlockType::Fern,
             BlockType::LargeFernTop,
             BlockType::LargeFernBottom,
@@ -145,6 +148,8 @@ impl BlockRegistry {
             BlockType::SweetBerryBushStage2,
             BlockType::Cactus,
             BlockType::CactusFlower,
+            BlockType::JungleLog,
+            BlockType::JungleLeaves,
         ];
 
         for block in all_blocks.iter() {

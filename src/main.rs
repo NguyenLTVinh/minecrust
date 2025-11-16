@@ -3,6 +3,8 @@ mod block;
 mod camera;
 mod chunk;
 mod decoration;
+mod gamemode;
+mod input;
 mod mesh_builder;
 mod rng;
 mod shader;
@@ -10,12 +12,14 @@ mod sky;
 mod terrain;
 mod texture;
 mod tree_generator;
+mod ui;
 
 use camera::Camera;
-use cgmath::{Deg, InnerSpace, Matrix, perspective};
+use cgmath::{Deg, Matrix, perspective};
 use chunk::{CHUNK_SIZE, Chunk, ChunkMesh, ChunkPos, RENDER_DISTANCE};
 use gl::types::*;
-use glfw::{Action, Context, Key};
+use glfw::Context;
+use input::InputHandler;
 use mesh_builder::MeshBuilder;
 use shader::{FRAGMENT_SHADER, VERTEX_SHADER, compile_shader, link_program};
 use sky::{SKY_FRAGMENT_SHADER, SKY_VERTEX_SHADER, Sky, get_wicked_time_of_day};
@@ -27,6 +31,7 @@ use terrain::TerrainGenerator;
 use texture::TextureAtlas;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 use tree_generator::TreeGenerator;
+use ui::UserInterface;
 
 struct ChunkGenerationRequest {
     pos: ChunkPos,
@@ -43,13 +48,12 @@ struct Game {
     shader_program: GLuint,
     sky_shader_program: GLuint,
     texture_atlas: TextureAtlas,
-    last_mouse_x: f64,
-    last_mouse_y: f64,
-    first_mouse: bool,
+    input_handler: InputHandler,
     sky: Sky,
     chunk_request_tx: UnboundedSender<ChunkGenerationRequest>,
     chunk_result_rx: UnboundedReceiver<ChunkGenerationResult>,
     pending_chunks: HashSet<ChunkPos>,
+    ui: UserInterface,
 }
 
 impl Game {
@@ -98,13 +102,12 @@ impl Game {
             shader_program,
             sky_shader_program,
             texture_atlas,
-            last_mouse_x: 400.0,
-            last_mouse_y: 300.0,
-            first_mouse: true,
+            input_handler: InputHandler::new(),
             sky,
             chunk_request_tx,
             chunk_result_rx,
             pending_chunks: HashSet::new(),
+            ui: UserInterface::new(),
         })
     }
 
@@ -165,57 +168,9 @@ impl Game {
                 }
             }
         }
-    }
 
-    fn handle_input(&mut self, window: &mut glfw::Window, delta_time: f32) {
-        let mut speed = 30.0 * delta_time;
-
-        if window.get_key(Key::LeftControl) == Action::Press {
-            speed *= 2.0;
-        }
-
-        let right = self.camera.front.cross(self.camera.up).normalize();
-
-        if window.get_key(Key::W) == Action::Press {
-            self.camera.position += self.camera.forward * speed;
-        }
-        if window.get_key(Key::S) == Action::Press {
-            self.camera.position -= self.camera.forward * speed;
-        }
-        if window.get_key(Key::A) == Action::Press {
-            self.camera.position -= right * speed;
-        }
-        if window.get_key(Key::D) == Action::Press {
-            self.camera.position += right * speed;
-        }
-        if window.get_key(Key::Space) == Action::Press {
-            self.camera.position.y += speed;
-        }
-        if window.get_key(Key::LeftShift) == Action::Press {
-            self.camera.position.y -= speed;
-        }
-
-        self.sky.day_night_cycle.fast_forward = window.get_key(Key::T) == Action::Press;
-    }
-
-    fn handle_mouse(&mut self, xpos: f64, ypos: f64) {
-        if self.first_mouse {
-            self.last_mouse_x = xpos;
-            self.last_mouse_y = ypos;
-            self.first_mouse = false;
-        }
-
-        let xoffset = (xpos - self.last_mouse_x) as f32 * 0.1;
-        let yoffset = (self.last_mouse_y - ypos) as f32 * 0.1;
-
-        self.last_mouse_x = xpos;
-        self.last_mouse_y = ypos;
-
-        self.camera.yaw += xoffset;
-        self.camera.pitch += yoffset;
-
-        self.camera.pitch = self.camera.pitch.clamp(-89.0, 89.0);
-        self.camera.update_vectors();
+        self.ui
+            .update_highlighted_block(self.camera.position, self.camera.front, &self.chunks);
     }
 
     fn render(&self, width: u32, height: u32) {
@@ -290,7 +245,12 @@ impl Game {
                 mooncolor,
                 mooncolor2,
             );
+
+            self.ui
+                .render_highlight(&view, &projection, self.camera.position);
         }
+
+        self.ui.render(width, height);
     }
 }
 
@@ -309,12 +269,13 @@ async fn main() {
     ));
 
     let (mut window, events) = glfw
-        .create_window(1280, 720, "Rust Voxel Engine", glfw::WindowMode::Windowed)
+        .create_window(1920, 1080, "Rust Voxel Engine", glfw::WindowMode::Windowed)
         .expect("Failed to create GLFW window");
 
     window.set_key_polling(true);
     window.set_cursor_pos_polling(true);
     window.set_framebuffer_size_polling(true);
+    window.set_mouse_button_polling(true);
     window.set_cursor_mode(glfw::CursorMode::Disabled);
     window.make_current();
 
@@ -343,18 +304,21 @@ async fn main() {
 
         glfw.poll_events();
         for (_, event) in glfw::flush_messages(&events) {
-            match event {
-                glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
-                    window.set_should_close(true)
-                }
-                glfw::WindowEvent::CursorPos(xpos, ypos) => {
-                    game.handle_mouse(xpos, ypos);
-                }
-                _ => {}
-            }
+            InputHandler::handle_window_event(
+                &event,
+                &mut game.input_handler,
+                &mut game.camera,
+                &mut game.ui,
+                &mut game.chunks,
+            );
         }
 
-        game.handle_input(&mut window, delta_time);
+        InputHandler::handle_keyboard_input(
+            &mut window,
+            &mut game.camera,
+            &mut game.sky,
+            delta_time,
+        );
         game.sky.day_night_cycle.update(delta_time);
         game.update_chunks().await;
 

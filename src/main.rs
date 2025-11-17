@@ -1,5 +1,6 @@
 mod biome;
 mod block;
+mod block_suggester;
 mod camera;
 mod chunk;
 mod command;

@@ -14,3 +14,4 @@ tokio = { version = "1.42", features = ["full"] }
 lazy_static = "1.4"
 strum = "0.26"
 strum_macros = "0.26"
+strsim = "0.11"

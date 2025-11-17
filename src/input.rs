@@ -248,6 +248,18 @@ impl InputHandler {
                 command_prompt.toggle();
                 CommandPromptAction::None
             }
+            WindowEvent::Key(Key::Up, _, Action::Press, _) => {
+                command_prompt.move_suggestion_up();
+                CommandPromptAction::None
+            }
+            WindowEvent::Key(Key::Down, _, Action::Press, _) => {
+                command_prompt.move_suggestion_down();
+                CommandPromptAction::None
+            }
+            WindowEvent::Key(Key::Right, _, Action::Press, _) => {
+                command_prompt.apply_suggestion();
+                CommandPromptAction::None
+            }
             WindowEvent::Key(Key::Enter, _, Action::Press, _) => {
                 let input = command_prompt.input.clone();
                 let result = CommandHandler::execute(&input);
@@ -258,7 +270,7 @@ impl InputHandler {
                         if trimmed.starts_with("use") {
                             if let Ok(block_type) = std::str::FromStr::from_str(
                                 trimmed
-                                    .strip_prefix("use BlockType::")
+                                    .strip_prefix("use")
                                     .unwrap_or("")
                                     .strip_suffix(";")
                                     .unwrap_or("")
@@ -279,15 +291,18 @@ impl InputHandler {
             }
             WindowEvent::Key(Key::Backspace, _, Action::Press, _) => {
                 command_prompt.on_backspace_press();
+                command_prompt.update_suggestions();
                 CommandPromptAction::None
             }
             WindowEvent::Key(Key::Delete, _, Action::Press, _) => {
                 command_prompt.clear();
+                command_prompt.update_suggestions();
                 CommandPromptAction::None
             }
             WindowEvent::Char(c) => {
                 if command_prompt.input.len() < 200 {
                     command_prompt.add_char(*c);
+                    command_prompt.update_suggestions();
                 }
                 CommandPromptAction::None
             }

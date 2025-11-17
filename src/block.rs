@@ -1,4 +1,14 @@
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, strum_macros::EnumString)]
+#[derive(
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    Debug,
+    strum_macros::EnumString,
+    strum_macros::IntoStaticStr,
+    strum_macros::EnumIter,
+)]
 pub enum BlockType {
     Air,
     GrassBlock,

@@ -1,3 +1,4 @@
+use crate::block_suggester::{BlockSuggester, BlockSuggestion};
 use crate::text::TextRenderer;
 
 pub struct CommandPrompt {
@@ -11,6 +12,9 @@ pub struct CommandPrompt {
     pub message: String,
     pub message_timer: f32,
     pub message_duration: f32,
+    pub suggestions: Vec<BlockSuggestion>,
+    pub selected_suggestion_index: usize,
+    pub show_suggestions: bool,
 }
 
 impl CommandPrompt {
@@ -26,6 +30,45 @@ impl CommandPrompt {
             message: String::new(),
             message_timer: 0.0,
             message_duration: 3.0,
+            suggestions: Vec::new(),
+            selected_suggestion_index: 0,
+            show_suggestions: false,
+        }
+    }
+
+    pub fn update_suggestions(&mut self) {
+        if self.input.starts_with("use ") && !self.input.ends_with(";") {
+            let input_part = self.input.strip_prefix("use ").unwrap_or("");
+            self.suggestions = BlockSuggester::suggest(input_part, 5);
+            self.show_suggestions = !self.suggestions.is_empty();
+            self.selected_suggestion_index = 0;
+        } else {
+            self.show_suggestions = false;
+            self.suggestions.clear();
+        }
+    }
+
+    pub fn move_suggestion_down(&mut self) {
+        if self.show_suggestions && !self.suggestions.is_empty() {
+            self.selected_suggestion_index =
+                (self.selected_suggestion_index + 1) % self.suggestions.len();
+        }
+    }
+
+    pub fn move_suggestion_up(&mut self) {
+        if self.show_suggestions && !self.suggestions.is_empty() {
+            if self.selected_suggestion_index == 0 {
+                self.selected_suggestion_index = self.suggestions.len() - 1;
+            } else {
+                self.selected_suggestion_index -= 1;
+            }
+        }
+    }
+
+    pub fn apply_suggestion(&mut self) {
+        if self.show_suggestions && self.selected_suggestion_index < self.suggestions.len() {
+            let suggestion = &self.suggestions[self.selected_suggestion_index];
+            self.input = format!("use {};", suggestion.block_name);
         }
     }
 
@@ -118,5 +161,23 @@ impl CommandPrompt {
     ) {
         let prompt_text = self.get_display_text();
         text_renderer.render_text(&prompt_text, 10.0, 10.0, scale, width, height, time);
+
+        if !self.input.starts_with("use ") || self.input.ends_with(";") {
+            return;
+        }
+
+        if self.show_suggestions && !self.suggestions.is_empty() {
+            let mut y_offset = 35.0;
+            for (i, suggestion) in self.suggestions.iter().enumerate() {
+                let indicator = if i == self.selected_suggestion_index {
+                    "> "
+                } else {
+                    "  "
+                };
+                let line = format!("{}{}", indicator, suggestion.block_name);
+                text_renderer.render_text(&line, 20.0, y_offset, scale, width, height, time);
+                y_offset += 20.0;
+            }
+        }
     }
 }

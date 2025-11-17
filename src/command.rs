@@ -26,9 +26,9 @@ impl CommandHandler {
     }
 
     fn handle_use_command(input: &str) -> CommandResult {
-        if !input.starts_with("use BlockType::") {
+        if !input.starts_with("use ") {
             return CommandResult::Error(
-                "Invalid syntax. Expected: use BlockType::<BlockTypeName>;".to_string(),
+                "Invalid syntax. Expected: use <BlockTypeName>;".to_string(),
             );
         }
 
@@ -37,7 +37,7 @@ impl CommandHandler {
         }
 
         let block_name = input
-            .strip_prefix("use BlockType::")
+            .strip_prefix("use ")
             .unwrap()
             .strip_suffix(";")
             .unwrap()

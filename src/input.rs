@@ -242,6 +242,7 @@ impl InputHandler {
         event: &WindowEvent,
         command_prompt: &mut CommandPrompt,
         input_handler: &mut Self,
+        sky: &mut Sky,
     ) -> CommandPromptAction {
         match event {
             WindowEvent::Key(Key::Slash, _, Action::Press, _) => {
@@ -284,6 +285,25 @@ impl InputHandler {
                     crate::command::CommandResult::Error(msg) => {
                         command_prompt.set_message(msg);
                     }
+                    crate::command::CommandResult::TimeChange(time_change) => {
+                        use crate::command::TimeChange;
+                        match time_change {
+                            TimeChange::SetTime(time) => {
+                                sky.day_night_cycle.time = time;
+                                command_prompt.set_message(format!("Time set to: {}", time));
+                            }
+                            TimeChange::ToggleCycle => {
+                                sky.day_night_cycle.cycle_enabled =
+                                    !sky.day_night_cycle.cycle_enabled;
+                                let state = if sky.day_night_cycle.cycle_enabled {
+                                    "enabled"
+                                } else {
+                                    "disabled"
+                                };
+                                command_prompt.set_message(format!("Day-night cycle {}", state));
+                            }
+                        }
+                    }
                 }
 
                 command_prompt.reset();
@@ -324,7 +344,8 @@ impl InputHandler {
     ) {
         for (_, event) in glfw::flush_messages(events) {
             if *command_prompt_visible {
-                match Self::handle_command_prompt_event(&event, command_prompt, input_handler) {
+                match Self::handle_command_prompt_event(&event, command_prompt, input_handler, sky)
+                {
                     CommandPromptAction::Submitted(_) => {
                         *command_prompt_visible = false;
                     }

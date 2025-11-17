@@ -11,6 +11,7 @@ pub struct DayNightCycle {
     pub time: f32,
     pub tick_speed: f32,
     pub fast_forward: bool,
+    pub cycle_enabled: bool,
 }
 
 impl DayNightCycle {
@@ -19,10 +20,15 @@ impl DayNightCycle {
             time: 0.25,
             tick_speed: 0.001,
             fast_forward: false,
+            cycle_enabled: true,
         }
     }
 
     pub fn update(&mut self, delta_time: f32) {
+        if !self.cycle_enabled {
+            return;
+        }
+
         let speed = if self.fast_forward {
             self.tick_speed * 100.0
         } else {

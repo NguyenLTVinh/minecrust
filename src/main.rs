@@ -5,6 +5,7 @@ mod camera;
 mod chunk;
 mod command;
 mod command_prompt;
+mod command_suggester;
 mod decoration;
 mod gamemode;
 mod input;

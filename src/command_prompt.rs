@@ -1,4 +1,4 @@
-use crate::block_suggester::{BlockSuggester, BlockSuggestion};
+use crate::command_suggester::{CommandSuggester, CommandSuggestion};
 use crate::text::TextRenderer;
 
 pub struct CommandPrompt {
@@ -12,7 +12,7 @@ pub struct CommandPrompt {
     pub message: String,
     pub message_timer: f32,
     pub message_duration: f32,
-    pub suggestions: Vec<BlockSuggestion>,
+    pub suggestions: Vec<CommandSuggestion>,
     pub selected_suggestion_index: usize,
     pub show_suggestions: bool,
 }
@@ -37,9 +37,8 @@ impl CommandPrompt {
     }
 
     pub fn update_suggestions(&mut self) {
-        if self.input.starts_with("use ") && !self.input.ends_with(";") {
-            let input_part = self.input.strip_prefix("use ").unwrap_or("");
-            self.suggestions = BlockSuggester::suggest(input_part, 5);
+        if !self.input.ends_with(";") {
+            self.suggestions = CommandSuggester::suggest(&self.input, 5);
             self.show_suggestions = !self.suggestions.is_empty();
             self.selected_suggestion_index = 0;
         } else {
@@ -68,7 +67,26 @@ impl CommandPrompt {
     pub fn apply_suggestion(&mut self) {
         if self.show_suggestions && self.selected_suggestion_index < self.suggestions.len() {
             let suggestion = &self.suggestions[self.selected_suggestion_index];
-            self.input = format!("use {};", suggestion.block_name);
+            let text = suggestion.text();
+
+            match suggestion {
+                CommandSuggestion::Command(_, _) => {
+                    self.input = format!("{} ", text);
+                }
+                CommandSuggestion::Argument(cmd, _, _) => {
+                    let parts: Vec<&str> = self.input.split_whitespace().collect();
+                    if parts.len() > 0 && parts[0] == cmd {
+                        self.input = format!("{} {};", cmd, text);
+                    } else {
+                        self.input = format!("{} {};", text, "");
+                        self.input = self.input.trim_end().to_string();
+                        self.input.push(';');
+                    }
+                }
+                CommandSuggestion::Block(_, _, _) => {
+                    self.input = format!("use {};", text);
+                }
+            }
         }
     }
 
@@ -162,7 +180,7 @@ impl CommandPrompt {
         let prompt_text = self.get_display_text();
         text_renderer.render_text(&prompt_text, 10.0, 10.0, scale, width, height, time);
 
-        if !self.input.starts_with("use ") || self.input.ends_with(";") {
+        if self.input.ends_with(";") {
             return;
         }
 
@@ -174,7 +192,7 @@ impl CommandPrompt {
                 } else {
                     "  "
                 };
-                let line = format!("{}{}", indicator, suggestion.block_name);
+                let line = format!("{}{}", indicator, suggestion.text());
                 text_renderer.render_text(&line, 20.0, y_offset, scale, width, height, time);
                 y_offset += 20.0;
             }

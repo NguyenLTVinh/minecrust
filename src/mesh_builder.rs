@@ -74,7 +74,7 @@ impl MeshBuilder {
 
                 let tex_coords = atlas.get_tex_coords(block, face_dir);
                 let tint = match block {
-                    BlockType::Grass | BlockType::GrassSnowy => {
+                    BlockType::GrassBlock | BlockType::SnowyGrassBlock => {
                         if face_dir == FaceDirection::Top {
                             atlas.get_tint(block)
                         } else {

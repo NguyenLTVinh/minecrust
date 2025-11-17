@@ -42,21 +42,21 @@ impl DecorationGenerator {
                     {
                         match biome_name {
                             "grassland" => {
-                                if block == BlockType::Grass {
+                                if block == BlockType::GrassBlock {
                                     Self::generate_grassland_decoration(
                                         chunk, x, surface_y, z, world_x, world_z,
                                     );
                                 }
                             }
                             "oak_forest" | "birch_forest" => {
-                                if block == BlockType::Grass {
+                                if block == BlockType::GrassBlock {
                                     Self::generate_forest_decoration(
                                         chunk, x, surface_y, z, world_x, world_z,
                                     );
                                 }
                             }
                             "taiga" => {
-                                if block == BlockType::Grass {
+                                if block == BlockType::GrassBlock {
                                     Self::generate_taiga_decoration(
                                         chunk, x, surface_y, z, world_x, world_z,
                                     );

@@ -1,8 +1,8 @@
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, strum_macros::EnumString)]
 pub enum BlockType {
     Air,
-    Grass,
-    GrassSnowy,
+    GrassBlock,
+    SnowyGrassBlock,
     Dirt,
     Stone,
     Sand,
@@ -174,8 +174,8 @@ impl BlockRegistry {
 
         let all_blocks = [
             BlockType::Air,
-            BlockType::Grass,
-            BlockType::GrassSnowy,
+            BlockType::GrassBlock,
+            BlockType::SnowyGrassBlock,
             BlockType::Dirt,
             BlockType::Stone,
             BlockType::Sand,

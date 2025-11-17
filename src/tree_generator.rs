@@ -62,15 +62,17 @@ impl TreeGenerator {
                     let biome = terrain_gen.get_biome_at(world_x, actual_surface, world_z);
                     let block = chunk.get_block(x, actual_surface, z);
 
-                    let (should_spawn, surface_requirement, tree_threshold, tree_type) =
-                        match biome.name.as_str() {
-                            "taiga" => (true, BlockType::Podzol, 0.96, TreeType::Spruce),
-                            "snowy_taiga" => (true, BlockType::GrassSnowy, 0.96, TreeType::Spruce),
-                            "oak_forest" => (true, BlockType::Grass, 0.94, TreeType::Oak),
-                            "birch_forest" => (true, BlockType::Grass, 0.94, TreeType::Birch),
-                            "desert" => (true, BlockType::Sand, 0.99, TreeType::Cactus),
-                            _ => (false, BlockType::Air, 0.98, TreeType::Oak),
-                        };
+                    let (should_spawn, surface_requirement, tree_threshold, tree_type) = match biome
+                        .name
+                        .as_str()
+                    {
+                        "taiga" => (true, BlockType::Podzol, 0.96, TreeType::Spruce),
+                        "snowy_taiga" => (true, BlockType::SnowyGrassBlock, 0.96, TreeType::Spruce),
+                        "oak_forest" => (true, BlockType::GrassBlock, 0.94, TreeType::Oak),
+                        "birch_forest" => (true, BlockType::GrassBlock, 0.94, TreeType::Birch),
+                        "desert" => (true, BlockType::Sand, 0.99, TreeType::Cactus),
+                        _ => (false, BlockType::Air, 0.98, TreeType::Oak),
+                    };
 
                     if !should_spawn || block != surface_requirement {
                         continue;

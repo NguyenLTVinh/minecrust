@@ -78,7 +78,7 @@ impl BiomeManager {
     fn register_default_biomes(&mut self) {
         self.register(Biome::new(
             "grassland",
-            BlockType::Grass,
+            BlockType::GrassBlock,
             BlockType::Dirt,
             BlockType::Stone,
             BlockType::Water,
@@ -109,7 +109,7 @@ impl BiomeManager {
         self.register(
             Biome::new(
                 "taiga",
-                BlockType::Grass,
+                BlockType::GrassBlock,
                 BlockType::Dirt,
                 BlockType::Stone,
                 BlockType::Water,
@@ -126,7 +126,7 @@ impl BiomeManager {
 
         self.register(Biome::new(
             "snowy_taiga",
-            BlockType::GrassSnowy,
+            BlockType::SnowyGrassBlock,
             BlockType::Dirt,
             BlockType::Stone,
             BlockType::Water,
@@ -156,7 +156,7 @@ impl BiomeManager {
 
         self.register(Biome::new(
             "oak_forest",
-            BlockType::Grass,
+            BlockType::GrassBlock,
             BlockType::Dirt,
             BlockType::Stone,
             BlockType::Water,
@@ -171,7 +171,7 @@ impl BiomeManager {
 
         self.register(Biome::new(
             "birch_forest",
-            BlockType::Grass,
+            BlockType::GrassBlock,
             BlockType::Dirt,
             BlockType::Stone,
             BlockType::Water,
@@ -296,9 +296,9 @@ pub fn generate_surface_variants(chunk: &mut Chunk, terrain_gen: &TerrainGenerat
                                                     chunk.get_block(px_local, target_y, pz_local);
                                                 if matches!(
                                                     block_at,
-                                                    BlockType::Grass
+                                                    BlockType::GrassBlock
                                                         | BlockType::Dirt
-                                                        | BlockType::GrassSnowy
+                                                        | BlockType::SnowyGrassBlock
                                                 ) {
                                                     chunk.set_block(
                                                         px_local, target_y, pz_local, variant,
@@ -356,13 +356,13 @@ pub fn generate_snow(
 
                 if adjusted_factor > 0.5 {
                     match block {
-                        BlockType::Grass | BlockType::Podzol => {
+                        BlockType::GrassBlock | BlockType::Podzol => {
                             let replace_seed = ((world_x * 9876 + world_z * 5432) as u32) % 100;
 
                             if replace_seed < 30 && adjusted_factor > 0.7 {
                                 chunk.set_block(x, y, z, BlockType::Snow);
                             } else {
-                                chunk.set_block(x, y, z, BlockType::GrassSnowy);
+                                chunk.set_block(x, y, z, BlockType::SnowyGrassBlock);
                             }
                             let snow_y = y + 1;
                             if snow_y < CHUNK_HEIGHT

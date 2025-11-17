@@ -409,12 +409,12 @@ impl TextureAtlas {
         let index = match block {
             BlockType::Stone => 0,
             BlockType::Dirt => 1,
-            BlockType::Grass => match face {
+            BlockType::GrassBlock => match face {
                 FaceDirection::Top => 3,
                 FaceDirection::Bottom => 1,
                 _ => 2,
             },
-            BlockType::GrassSnowy => match face {
+            BlockType::SnowyGrassBlock => match face {
                 FaceDirection::Top => 8,
                 FaceDirection::Bottom => 1,
                 _ => 9,
@@ -487,13 +487,13 @@ impl TextureAtlas {
             BlockType::MossyStoneBricks => 58,
             BlockType::SmoothStone => 59,
             BlockType::Sandstone => match face {
-                FaceDirection::Top => 60,
-                FaceDirection::Bottom => 61,
-                _ => 59,
+                FaceDirection::Top => 61,
+                FaceDirection::Bottom => 62,
+                _ => 60,
             },
             BlockType::ChiseledSandstone => match face {
-                FaceDirection::Top => 60,
-                FaceDirection::Bottom => 61,
+                FaceDirection::Top => 61,
+                FaceDirection::Bottom => 62,
                 _ => 63,
             },
             BlockType::Terracotta => 64,
@@ -542,7 +542,7 @@ impl TextureAtlas {
 
     pub fn get_tint(&self, block: BlockType) -> [f32; 3] {
         match block {
-            BlockType::Grass => self.grass_color,
+            BlockType::GrassBlock => self.grass_color,
             BlockType::ShortGrass | BlockType::TallGrassTop | BlockType::TallGrassBottom => {
                 self.grass_color
             }

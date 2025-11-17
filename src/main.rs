@@ -2,6 +2,7 @@ mod biome;
 mod block;
 mod camera;
 mod chunk;
+mod command;
 mod command_prompt;
 mod decoration;
 mod gamemode;
@@ -301,6 +302,9 @@ impl Game {
                 .render(&self.text_renderer, width, height, 2.0, time);
         }
 
+        self.command_prompt
+            .render_message(&self.text_renderer, width, height, 2.0, time);
+
         unsafe {
             gl::Enable(gl::DEPTH_TEST);
         }
@@ -371,6 +375,7 @@ async fn main() {
 
         game.sky.day_night_cycle.update(delta_time);
         game.command_prompt.update(delta_time);
+        game.command_prompt.message_timer += delta_time;
         game.update_chunks().await;
 
         let sky_color = Sky::get_sky_color(game.sky.day_night_cycle.time);

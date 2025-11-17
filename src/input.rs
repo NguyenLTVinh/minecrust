@@ -1,5 +1,7 @@
+use crate::block::BlockType;
 use crate::camera::Camera;
 use crate::chunk::{Chunk, ChunkPos};
+use crate::command::CommandHandler;
 use crate::command_prompt::CommandPrompt;
 use crate::gamemode::GameMode;
 use crate::sky::Sky;
@@ -18,6 +20,7 @@ pub struct InputHandler {
     pub last_mouse_x: f64,
     pub last_mouse_y: f64,
     pub first_mouse: bool,
+    pub current_block: BlockType,
 }
 
 impl InputHandler {
@@ -26,6 +29,7 @@ impl InputHandler {
             last_mouse_x: 400.0,
             last_mouse_y: 300.0,
             first_mouse: true,
+            current_block: BlockType::Stone,
         }
     }
 
@@ -128,7 +132,6 @@ impl InputHandler {
     }
 
     fn place_block(&self, ui: &UserInterface, chunks: &mut HashMap<ChunkPos, Chunk>) {
-        use crate::block::BlockType;
         use crate::chunk::CHUNK_SIZE;
 
         if let Some(block_pos) = ui.highlighted_block {
@@ -143,7 +146,7 @@ impl InputHandler {
             let local_z = block_pos.z - chunk_z * CHUNK_SIZE;
 
             if let Some(chunk) = chunks.get_mut(&chunk_pos) {
-                chunk.set_block(local_x, block_pos.y, local_z, BlockType::Stone);
+                chunk.set_block(local_x, block_pos.y, local_z, self.current_block);
             }
 
             if local_x == 0 {
@@ -238,6 +241,7 @@ impl InputHandler {
     pub fn handle_command_prompt_event(
         event: &WindowEvent,
         command_prompt: &mut CommandPrompt,
+        input_handler: &mut Self,
     ) -> CommandPromptAction {
         match event {
             WindowEvent::Key(Key::Slash, _, Action::Press, _) => {
@@ -246,12 +250,39 @@ impl InputHandler {
             }
             WindowEvent::Key(Key::Enter, _, Action::Press, _) => {
                 let input = command_prompt.input.clone();
-                println!("{}", input);
+                let result = CommandHandler::execute(&input);
+
+                match result {
+                    crate::command::CommandResult::Success(msg) => {
+                        let trimmed = input.trim();
+                        if trimmed.starts_with("use") {
+                            if let Ok(block_type) = std::str::FromStr::from_str(
+                                trimmed
+                                    .strip_prefix("use BlockType::")
+                                    .unwrap_or("")
+                                    .strip_suffix(";")
+                                    .unwrap_or("")
+                                    .trim(),
+                            ) {
+                                input_handler.current_block = block_type;
+                            }
+                        }
+                        command_prompt.set_message(msg);
+                    }
+                    crate::command::CommandResult::Error(msg) => {
+                        command_prompt.set_message(msg);
+                    }
+                }
+
                 command_prompt.reset();
                 CommandPromptAction::Submitted(input)
             }
             WindowEvent::Key(Key::Backspace, _, Action::Press, _) => {
                 command_prompt.on_backspace_press();
+                CommandPromptAction::None
+            }
+            WindowEvent::Key(Key::Delete, _, Action::Press, _) => {
+                command_prompt.clear();
                 CommandPromptAction::None
             }
             WindowEvent::Char(c) => {
@@ -278,7 +309,7 @@ impl InputHandler {
     ) {
         for (_, event) in glfw::flush_messages(events) {
             if *command_prompt_visible {
-                match Self::handle_command_prompt_event(&event, command_prompt) {
+                match Self::handle_command_prompt_event(&event, command_prompt, input_handler) {
                     CommandPromptAction::Submitted(_) => {
                         *command_prompt_visible = false;
                     }

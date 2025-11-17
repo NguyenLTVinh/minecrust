@@ -12,3 +12,5 @@ rand = "0.9.2"
 image = "0.25.8"
 tokio = { version = "1.42", features = ["full"] }
 lazy_static = "1.4"
+strum = "0.26"
+strum_macros = "0.26"

@@ -1,4 +1,4 @@
-use crate::block_suggester::{BlockSuggester, BlockSuggestion};
+use crate::block_suggester::BlockSuggester;
 use strsim::jaro_winkler;
 
 #[derive(Clone, Debug)]

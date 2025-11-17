@@ -72,18 +72,21 @@ impl MeshBuilder {
                 let wy = y as f32;
                 let wz = (chunk.pos.z * crate::chunk::CHUNK_SIZE + z) as f32;
 
-                let tex_coords = atlas.get_tex_coords(block, face_dir);
-                let tint = match block {
-                    BlockType::GrassBlock | BlockType::SnowyGrassBlock => {
-                        if face_dir == FaceDirection::Top {
-                            atlas.get_tint(block)
-                        } else {
-                            [1.0, 1.0, 1.0]
+                if let Some(block_def) = block.get_block() {
+                    let tex_index = block_def.texture.get_texture(face_dir);
+                    let tex_coords = atlas.get_tex_coords(tex_index);
+                    let tint = match block {
+                        BlockType::GrassBlock | BlockType::SnowyGrassBlock => {
+                            if face_dir == FaceDirection::Top {
+                                atlas.get_tint(block)
+                            } else {
+                                [1.0, 1.0, 1.0]
+                            }
                         }
-                    }
-                    _ => atlas.get_tint(block),
-                };
-                Self::add_face(vertices, wx, wy, wz, dx, dy, dz, tex_coords, tint);
+                        _ => atlas.get_tint(block),
+                    };
+                    Self::add_face(vertices, wx, wy, wz, dx, dy, dz, tex_coords, tint);
+                }
             }
         }
     }
@@ -106,20 +109,23 @@ impl MeshBuilder {
 
         let tint = atlas.get_tint(block);
 
-        let faces = [
-            (FaceDirection::Top, 0, 1, 0, FaceDirection::Top),
-            (FaceDirection::Bottom, 0, -1, 0, FaceDirection::Bottom),
-            (FaceDirection::Front, 0, 0, 1, FaceDirection::Front),
-            (FaceDirection::Back, 0, 0, -1, FaceDirection::Back),
-            (FaceDirection::Right, 1, 0, 0, FaceDirection::Front),
-            (FaceDirection::Left, -1, 0, 0, FaceDirection::Front),
-        ];
+        if let Some(block_def) = block.get_block() {
+            let face_configs = [
+                (0, 1, 0, FaceDirection::Top),
+                (0, -1, 0, FaceDirection::Bottom),
+                (0, 0, 1, FaceDirection::Front),
+                (0, 0, -1, FaceDirection::Back),
+                (1, 0, 0, FaceDirection::Right),
+                (-1, 0, 0, FaceDirection::Left),
+            ];
 
-        for (_, dx, dy, dz, tex_face_dir) in faces {
-            let tex_coords = atlas.get_tex_coords(block, tex_face_dir);
-            Self::add_scaled_face(
-                vertices, x, y, z, dx, dy, dz, w, h, l, inset_x, inset_z, tex_coords, tint,
-            );
+            for (dx, dy, dz, face_dir) in face_configs {
+                let tex_index = block_def.texture.get_texture(face_dir);
+                let tex_coords = atlas.get_tex_coords(tex_index);
+                Self::add_scaled_face(
+                    vertices, x, y, z, dx, dy, dz, w, h, l, inset_x, inset_z, tex_coords, tint,
+                );
+            }
         }
     }
 
@@ -331,63 +337,66 @@ impl MeshBuilder {
         block: BlockType,
         atlas: &TextureAtlas,
     ) {
-        let tex = atlas.get_tex_coords(block, FaceDirection::Top);
-        let tint = atlas.get_tint(block);
-        let cx = x + 0.5;
-        let cz = z + 0.5;
+        if let Some(block_def) = block.get_block() {
+            let tex_index = block_def.texture.get_texture(FaceDirection::Top);
+            let tex = atlas.get_tex_coords(tex_index);
+            let tint = atlas.get_tint(block);
+            let cx = x + 0.5;
+            let cz = z + 0.5;
 
-        let normal1 = [0.7071, 0.0, 0.7071];
-        #[rustfmt::skip]
-        let square1 = vec![
-            cx - 0.5, y,       cz - 0.5,
-            cx - 0.5, y + 1.0, cz - 0.5,
-            cx + 0.5, y + 1.0, cz + 0.5,
+            let normal1 = [0.7071, 0.0, 0.7071];
+            #[rustfmt::skip]
+            let square1 = vec![
+                cx - 0.5, y,       cz - 0.5,
+                cx - 0.5, y + 1.0, cz - 0.5,
+                cx + 0.5, y + 1.0, cz + 0.5,
 
-            cx - 0.5, y,       cz - 0.5,
-            cx + 0.5, y + 1.0, cz + 0.5,
-            cx + 0.5, y,       cz + 0.5,
-        ];
-        let uvs1 = [
-            [tex.u_min, tex.v_max],
-            [tex.u_min, tex.v_min],
-            [tex.u_max, tex.v_min],
-            [tex.u_min, tex.v_max],
-            [tex.u_max, tex.v_min],
-            [tex.u_max, tex.v_max],
-        ];
+                cx - 0.5, y,       cz - 0.5,
+                cx + 0.5, y + 1.0, cz + 0.5,
+                cx + 0.5, y,       cz + 0.5,
+            ];
+            let uvs1 = [
+                [tex.u_min, tex.v_max],
+                [tex.u_min, tex.v_min],
+                [tex.u_max, tex.v_min],
+                [tex.u_min, tex.v_max],
+                [tex.u_max, tex.v_min],
+                [tex.u_max, tex.v_max],
+            ];
 
-        for (i, pos_idx) in (0..square1.len()).step_by(3).enumerate() {
-            vertices.extend_from_slice(&square1[pos_idx..pos_idx + 3]);
-            vertices.extend_from_slice(&uvs1[i]);
-            vertices.extend_from_slice(&tint);
-            vertices.extend_from_slice(&normal1);
-        }
+            for (i, pos_idx) in (0..square1.len()).step_by(3).enumerate() {
+                vertices.extend_from_slice(&square1[pos_idx..pos_idx + 3]);
+                vertices.extend_from_slice(&uvs1[i]);
+                vertices.extend_from_slice(&tint);
+                vertices.extend_from_slice(&normal1);
+            }
 
-        let normal2 = [-0.7071, 0.0, 0.7071];
-        #[rustfmt::skip]
-        let square2 = vec![
-            cx + 0.5, y,       cz - 0.5,
-            cx + 0.5, y + 1.0, cz - 0.5,
-            cx - 0.5, y + 1.0, cz + 0.5,
+            let normal2 = [-0.7071, 0.0, 0.7071];
+            #[rustfmt::skip]
+            let square2 = vec![
+                cx + 0.5, y,       cz - 0.5,
+                cx + 0.5, y + 1.0, cz - 0.5,
+                cx - 0.5, y + 1.0, cz + 0.5,
 
-            cx + 0.5, y,       cz - 0.5,
-            cx - 0.5, y + 1.0, cz + 0.5,
-            cx - 0.5, y,       cz + 0.5,
-        ];
-        let uvs2 = [
-            [tex.u_min, tex.v_max],
-            [tex.u_min, tex.v_min],
-            [tex.u_max, tex.v_min],
-            [tex.u_min, tex.v_max],
-            [tex.u_max, tex.v_min],
-            [tex.u_max, tex.v_max],
-        ];
+                cx + 0.5, y,       cz - 0.5,
+                cx - 0.5, y + 1.0, cz + 0.5,
+                cx - 0.5, y,       cz + 0.5,
+            ];
+            let uvs2 = [
+                [tex.u_min, tex.v_max],
+                [tex.u_min, tex.v_min],
+                [tex.u_max, tex.v_min],
+                [tex.u_min, tex.v_max],
+                [tex.u_max, tex.v_min],
+                [tex.u_max, tex.v_max],
+            ];
 
-        for (i, pos_idx) in (0..square2.len()).step_by(3).enumerate() {
-            vertices.extend_from_slice(&square2[pos_idx..pos_idx + 3]);
-            vertices.extend_from_slice(&uvs2[i]);
-            vertices.extend_from_slice(&tint);
-            vertices.extend_from_slice(&normal2);
+            for (i, pos_idx) in (0..square2.len()).step_by(3).enumerate() {
+                vertices.extend_from_slice(&square2[pos_idx..pos_idx + 3]);
+                vertices.extend_from_slice(&uvs2[i]);
+                vertices.extend_from_slice(&tint);
+                vertices.extend_from_slice(&normal2);
+            }
         }
     }
 }

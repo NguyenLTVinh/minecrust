@@ -88,17 +88,32 @@ impl UserInterface {
         let (crosshair_proj_loc, crosshair_color_loc) = unsafe {
             gl::UseProgram(shader_program);
             (
-                gl::GetUniformLocation(shader_program, CString::new("projection").unwrap().as_ptr()),
-                gl::GetUniformLocation(shader_program, CString::new("crosshairColor").unwrap().as_ptr()),
+                gl::GetUniformLocation(
+                    shader_program,
+                    CString::new("projection").unwrap().as_ptr(),
+                ),
+                gl::GetUniformLocation(
+                    shader_program,
+                    CString::new("crosshairColor").unwrap().as_ptr(),
+                ),
             )
         };
 
         let (highlight_view_loc, highlight_proj_loc, highlight_color_loc) = unsafe {
             gl::UseProgram(highlight_shader_program);
             (
-                gl::GetUniformLocation(highlight_shader_program, CString::new("view").unwrap().as_ptr()),
-                gl::GetUniformLocation(highlight_shader_program, CString::new("projection").unwrap().as_ptr()),
-                gl::GetUniformLocation(highlight_shader_program, CString::new("highlightColor").unwrap().as_ptr()),
+                gl::GetUniformLocation(
+                    highlight_shader_program,
+                    CString::new("view").unwrap().as_ptr(),
+                ),
+                gl::GetUniformLocation(
+                    highlight_shader_program,
+                    CString::new("projection").unwrap().as_ptr(),
+                ),
+                gl::GetUniformLocation(
+                    highlight_shader_program,
+                    CString::new("highlightColor").unwrap().as_ptr(),
+                ),
             )
         };
 
@@ -519,7 +534,12 @@ impl UserInterface {
                 gl::UseProgram(self.highlight_shader_program);
 
                 gl::UniformMatrix4fv(self.highlight_view_loc, 1, gl::FALSE, view_matrix.as_ptr());
-                gl::UniformMatrix4fv(self.highlight_proj_loc, 1, gl::FALSE, projection_matrix.as_ptr());
+                gl::UniformMatrix4fv(
+                    self.highlight_proj_loc,
+                    1,
+                    gl::FALSE,
+                    projection_matrix.as_ptr(),
+                );
 
                 let (r, g, b) = match self.mode {
                     GameMode::Delete => (220.0 / 255.0, 20.0 / 255.0, 60.0 / 255.0),

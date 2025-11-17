@@ -75,12 +75,30 @@ impl Game {
         let shader_uniforms = unsafe {
             gl::UseProgram(shader_program);
             ShaderUniforms {
-                view_loc: gl::GetUniformLocation(shader_program, CString::new("view").unwrap().as_ptr()),
-                proj_loc: gl::GetUniformLocation(shader_program, CString::new("projection").unwrap().as_ptr()),
-                sun_dir_loc: gl::GetUniformLocation(shader_program, CString::new("sunDirection").unwrap().as_ptr()),
-                ambient_loc: gl::GetUniformLocation(shader_program, CString::new("ambientLight").unwrap().as_ptr()),
-                sun_intensity_loc: gl::GetUniformLocation(shader_program, CString::new("sunIntensity").unwrap().as_ptr()),
-                wicked_time_loc: gl::GetUniformLocation(shader_program, CString::new("wickedTime").unwrap().as_ptr()),
+                view_loc: gl::GetUniformLocation(
+                    shader_program,
+                    CString::new("view").unwrap().as_ptr(),
+                ),
+                proj_loc: gl::GetUniformLocation(
+                    shader_program,
+                    CString::new("projection").unwrap().as_ptr(),
+                ),
+                sun_dir_loc: gl::GetUniformLocation(
+                    shader_program,
+                    CString::new("sunDirection").unwrap().as_ptr(),
+                ),
+                ambient_loc: gl::GetUniformLocation(
+                    shader_program,
+                    CString::new("ambientLight").unwrap().as_ptr(),
+                ),
+                sun_intensity_loc: gl::GetUniformLocation(
+                    shader_program,
+                    CString::new("sunIntensity").unwrap().as_ptr(),
+                ),
+                wicked_time_loc: gl::GetUniformLocation(
+                    shader_program,
+                    CString::new("wickedTime").unwrap().as_ptr(),
+                ),
             }
         };
 
@@ -204,10 +222,20 @@ impl Game {
             let projection = perspective(Deg(45.0), width as f32 / height as f32, 0.1, 1000.0);
 
             gl::UniformMatrix4fv(self.shader_uniforms.view_loc, 1, gl::FALSE, view.as_ptr());
-            gl::UniformMatrix4fv(self.shader_uniforms.proj_loc, 1, gl::FALSE, projection.as_ptr());
+            gl::UniformMatrix4fv(
+                self.shader_uniforms.proj_loc,
+                1,
+                gl::FALSE,
+                projection.as_ptr(),
+            );
 
             let sun_dir = self.sky.get_sun_direction(self.sky.day_night_cycle.time);
-            gl::Uniform3f(self.shader_uniforms.sun_dir_loc, sun_dir.x, sun_dir.y, sun_dir.z);
+            gl::Uniform3f(
+                self.shader_uniforms.sun_dir_loc,
+                sun_dir.x,
+                sun_dir.y,
+                sun_dir.z,
+            );
             gl::Uniform1f(
                 self.shader_uniforms.ambient_loc,
                 Sky::get_ambient_light(self.sky.day_night_cycle.time),

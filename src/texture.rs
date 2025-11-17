@@ -162,9 +162,71 @@ impl TextureAtlas {
         let jungle_log = load_texture("block/jungle_log.png");
         let jungle_log_top = load_texture("block/jungle_log_top.png");
         let jungle_leaves = load_texture("block/jungle_leaves.png");
+        let oak_planks = load_texture("block/oak_planks.png");
+        let spruce_planks = load_texture("block/spruce_planks.png");
+        let birch_planks = load_texture("block/birch_planks.png");
+        let jungle_planks = load_texture("block/jungle_planks.png");
+        let acacia_planks = load_texture("block/acacia_planks.png");
+        let dark_oak_planks = load_texture("block/dark_oak_planks.png");
+        let mangrove_planks = load_texture("block/mangrove_planks.png");
+        let cherry_planks = load_texture("block/cherry_planks.png");
+        let bamboo_planks = load_texture("block/bamboo_planks.png");
+        let crimson_planks = load_texture("block/crimson_planks.png");
+        let warped_planks = load_texture("block/warped_planks.png");
+        let pale_oak_planks = load_texture("block/pale_oak_planks.png");
+        let cobblestone = load_texture("block/cobblestone.png");
+        let mossy_cobblestone = load_texture("block/mossy_cobblestone.png");
+        let stone_bricks = load_texture("block/stone_bricks.png");
+        let chiseled_stone_bricks = load_texture("block/chiseled_stone_bricks.png");
+        let mossy_stone_bricks = load_texture("block/mossy_stone_bricks.png");
+        let smooth_stone = load_texture("block/smooth_stone.png");
+        let sandstone = load_texture("block/sandstone.png");
+        let sandstone_top = load_texture("block/sandstone_top.png");
+        let sandstone_bottom = load_texture("block/sandstone_bottom.png");
+        let chiseled_sandstone = load_texture("block/chiseled_sandstone.png");
+        let terracotta = load_texture("block/terracotta.png");
+        let black_terracotta = load_texture("block/black_terracotta.png");
+        let blue_terracotta = load_texture("block/blue_terracotta.png");
+        let brown_terracotta = load_texture("block/brown_terracotta.png");
+        let cyan_terracotta = load_texture("block/cyan_terracotta.png");
+        let gray_terracotta = load_texture("block/gray_terracotta.png");
+        let green_terracotta = load_texture("block/green_terracotta.png");
+        let light_blue_terracotta = load_texture("block/light_blue_terracotta.png");
+        let light_gray_terracotta = load_texture("block/light_gray_terracotta.png");
+        let lime_terracotta = load_texture("block/lime_terracotta.png");
+        let magenta_terracotta = load_texture("block/magenta_terracotta.png");
+        let orange_terracotta = load_texture("block/orange_terracotta.png");
+        let pink_terracotta = load_texture("block/pink_terracotta.png");
+        let purple_terracotta = load_texture("block/purple_terracotta.png");
+        let red_terracotta = load_texture("block/red_terracotta.png");
+        let white_terracotta = load_texture("block/white_terracotta.png");
+        let yellow_terracotta = load_texture("block/yellow_terracotta.png");
+        let black_glazed_terracotta = load_texture("block/black_glazed_terracotta.png");
+        let blue_glazed_terracotta = load_texture("block/blue_glazed_terracotta.png");
+        let brown_glazed_terracotta = load_texture("block/brown_glazed_terracotta.png");
+        let cyan_glazed_terracotta = load_texture("block/cyan_glazed_terracotta.png");
+        let gray_glazed_terracotta = load_texture("block/gray_glazed_terracotta.png");
+        let green_glazed_terracotta = load_texture("block/green_glazed_terracotta.png");
+        let light_blue_glazed_terracotta = load_texture("block/light_blue_glazed_terracotta.png");
+        let light_gray_glazed_terracotta = load_texture("block/light_gray_glazed_terracotta.png");
+        let lime_glazed_terracotta = load_texture("block/lime_glazed_terracotta.png");
+        let magenta_glazed_terracotta = load_texture("block/magenta_glazed_terracotta.png");
+        let orange_glazed_terracotta = load_texture("block/orange_glazed_terracotta.png");
+        let pink_glazed_terracotta = load_texture("block/pink_glazed_terracotta.png");
+        let purple_glazed_terracotta = load_texture("block/purple_glazed_terracotta.png");
+        let red_glazed_terracotta = load_texture("block/red_glazed_terracotta.png");
+        let white_glazed_terracotta = load_texture("block/white_glazed_terracotta.png");
+        let yellow_glazed_terracotta = load_texture("block/yellow_glazed_terracotta.png");
+        let copper_block = load_texture("block/copper_block.png");
+        let diamond_block = load_texture("block/diamond_block.png");
+        let emerald_block = load_texture("block/emerald_block.png");
+        let gold_block = load_texture("block/gold_block.png");
+        let iron_block = load_texture("block/iron_block.png");
+        let lapis_block = load_texture("block/lapis_block.png");
 
-        let atlas_width = TEXTURE_SIZE * 8;
-        let atlas_height = TEXTURE_SIZE * 7;
+        let atlas_width = TEXTURE_SIZE * 16;
+        let atlas_height = TEXTURE_SIZE * 8;
+
         let mut atlas = RgbaImage::new(atlas_width, atlas_height);
 
         let textures = vec![
@@ -210,11 +272,73 @@ impl TextureAtlas {
             jungle_log,
             jungle_log_top,
             jungle_leaves,
+            oak_planks,
+            spruce_planks,
+            birch_planks,
+            jungle_planks,
+            acacia_planks,
+            dark_oak_planks,
+            mangrove_planks,
+            cherry_planks,
+            bamboo_planks,
+            crimson_planks,
+            warped_planks,
+            pale_oak_planks,
+            cobblestone,
+            mossy_cobblestone,
+            stone_bricks,
+            chiseled_stone_bricks,
+            mossy_stone_bricks,
+            smooth_stone,
+            sandstone,
+            sandstone_top,
+            sandstone_bottom,
+            chiseled_sandstone,
+            terracotta,
+            black_terracotta,
+            blue_terracotta,
+            brown_terracotta,
+            cyan_terracotta,
+            gray_terracotta,
+            green_terracotta,
+            light_blue_terracotta,
+            light_gray_terracotta,
+            lime_terracotta,
+            magenta_terracotta,
+            orange_terracotta,
+            pink_terracotta,
+            purple_terracotta,
+            red_terracotta,
+            white_terracotta,
+            yellow_terracotta,
+            black_glazed_terracotta,
+            blue_glazed_terracotta,
+            brown_glazed_terracotta,
+            cyan_glazed_terracotta,
+            gray_glazed_terracotta,
+            green_glazed_terracotta,
+            light_blue_glazed_terracotta,
+            light_gray_glazed_terracotta,
+            lime_glazed_terracotta,
+            magenta_glazed_terracotta,
+            orange_glazed_terracotta,
+            pink_glazed_terracotta,
+            purple_glazed_terracotta,
+            red_glazed_terracotta,
+            white_glazed_terracotta,
+            yellow_glazed_terracotta,
+            copper_block,
+            diamond_block,
+            emerald_block,
+            gold_block,
+            iron_block,
+            lapis_block,
         ];
         for (i, tex) in textures.iter().enumerate() {
             let tex = tex.to_rgba8();
-            let row = i / 8;
-            let col = i % 8;
+            let row = i / 16;
+            let col = i % 16;
+
             let x_offset = col as u32 * TEXTURE_SIZE;
             let y_offset = row as u32 * TEXTURE_SIZE;
 
@@ -344,6 +468,73 @@ impl TextureAtlas {
                 _ => 39,
             },
             BlockType::JungleLeaves => 41,
+            BlockType::OakPlanks => 42,
+            BlockType::Spruceplanks => 43,
+            BlockType::BirchPlanks => 44,
+            BlockType::JunglePlanks => 45,
+            BlockType::AcaciaPlanks => 46,
+            BlockType::DarkOakPlanks => 47,
+            BlockType::MangorvePlanks => 48,
+            BlockType::CherryPlanks => 49,
+            BlockType::BambooPlanks => 50,
+            BlockType::CrimsonPlanks => 51,
+            BlockType::WarpedPlanks => 52,
+            BlockType::PaleOakPlanks => 53,
+            BlockType::Cobblestone => 54,
+            BlockType::MossyCobblestone => 55,
+            BlockType::StoneBricks => 56,
+            BlockType::ChiseledStoneBricks => 57,
+            BlockType::MossyStoneBricks => 58,
+            BlockType::SmoothStone => 59,
+            BlockType::Sandstone => match face {
+                FaceDirection::Top => 60,
+                FaceDirection::Bottom => 61,
+                _ => 59,
+            },
+            BlockType::ChiseledSandstone => match face {
+                FaceDirection::Top => 60,
+                FaceDirection::Bottom => 61,
+                _ => 63,
+            },
+            BlockType::Terracotta => 64,
+            BlockType::BlackTerracotta => 65,
+            BlockType::BlueTerracotta => 66,
+            BlockType::BrownTerracotta => 67,
+            BlockType::CyanTerracotta => 68,
+            BlockType::GrayTerracotta => 69,
+            BlockType::GreenTerracotta => 70,
+            BlockType::LightBlueTerracotta => 71,
+            BlockType::LightGrayTerracotta => 72,
+            BlockType::LimeTerracotta => 73,
+            BlockType::MagentaTerracotta => 74,
+            BlockType::OrangeTerracotta => 75,
+            BlockType::PinkTerracotta => 76,
+            BlockType::PurpleTerracotta => 77,
+            BlockType::RedTerracotta => 78,
+            BlockType::WhiteTerracotta => 79,
+            BlockType::YellowTerracotta => 80,
+            BlockType::BlackGlazedTerracotta => 81,
+            BlockType::BlueGlazedTerracotta => 82,
+            BlockType::BrownGlazedTerracotta => 83,
+            BlockType::CyanGlazedTerracotta => 84,
+            BlockType::GrayGlazedTerracotta => 85,
+            BlockType::GreenGlazedTerracotta => 86,
+            BlockType::LightBlueGlazedTerracotta => 87,
+            BlockType::LightGrayGlazedTerracotta => 88,
+            BlockType::LimeGlazedTerracotta => 89,
+            BlockType::MagentaGlazedTerracotta => 90,
+            BlockType::OrangeGlazedTerracotta => 91,
+            BlockType::PinkGlazedTerracotta => 92,
+            BlockType::PurpleGlazedTerracotta => 93,
+            BlockType::RedGlazedTerracotta => 94,
+            BlockType::WhiteGlazedTerracotta => 95,
+            BlockType::YellowGlazedTerracotta => 96,
+            BlockType::CopperBlock => 97,
+            BlockType::DiamondBlock => 98,
+            BlockType::EmeraldBlock => 99,
+            BlockType::GoldBlock => 100,
+            BlockType::IronBlock => 101,
+            BlockType::LapisBlock => 102,
             BlockType::Air => 0,
         };
         TextureCoords::new(index, self.atlas_width, self.atlas_height)

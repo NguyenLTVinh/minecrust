@@ -1,11 +1,18 @@
 use crate::camera::Camera;
 use crate::chunk::{Chunk, ChunkPos};
+use crate::command_prompt::CommandPrompt;
 use crate::gamemode::GameMode;
 use crate::sky::Sky;
 use crate::ui::UserInterface;
 use cgmath::InnerSpace;
 use glfw::{Action, Key, MouseButton, Window, WindowEvent};
 use std::collections::HashMap;
+use std::sync::mpsc::Receiver;
+
+pub enum CommandPromptAction {
+    None,
+    Submitted(String),
+}
 
 pub struct InputHandler {
     pub last_mouse_x: f64,
@@ -27,7 +34,12 @@ impl InputHandler {
         camera: &mut Camera,
         sky: &mut Sky,
         delta_time: f32,
+        command_prompt_visible: bool,
     ) {
+        if command_prompt_visible {
+            return;
+        }
+
         let mut speed = 15.0 * delta_time;
 
         if window.get_key(Key::LeftControl) == Action::Press {
@@ -221,5 +233,84 @@ impl InputHandler {
                 }
             }
         }
+    }
+
+    pub fn handle_command_prompt_event(
+        event: &WindowEvent,
+        command_prompt: &mut CommandPrompt,
+    ) -> CommandPromptAction {
+        match event {
+            WindowEvent::Key(Key::Slash, _, Action::Press, _) => {
+                command_prompt.toggle();
+                CommandPromptAction::None
+            }
+            WindowEvent::Key(Key::Enter, _, Action::Press, _) => {
+                let input = command_prompt.input.clone();
+                println!("{}", input);
+                command_prompt.reset();
+                CommandPromptAction::Submitted(input)
+            }
+            WindowEvent::Key(Key::Backspace, _, Action::Press, _) => {
+                command_prompt.on_backspace_press();
+                CommandPromptAction::None
+            }
+            WindowEvent::Char(c) => {
+                if command_prompt.input.len() < 200 {
+                    command_prompt.add_char(*c);
+                }
+                CommandPromptAction::None
+            }
+            _ => CommandPromptAction::None,
+        }
+    }
+
+    pub fn process_events(
+        window: &mut Window,
+        events: &Receiver<(f64, glfw::WindowEvent)>,
+        input_handler: &mut Self,
+        camera: &mut Camera,
+        ui: &mut UserInterface,
+        chunks: &mut HashMap<ChunkPos, Chunk>,
+        command_prompt: &mut CommandPrompt,
+        command_prompt_visible: &mut bool,
+        sky: &mut Sky,
+        delta_time: f32,
+    ) {
+        for (_, event) in glfw::flush_messages(events) {
+            if *command_prompt_visible {
+                match Self::handle_command_prompt_event(&event, command_prompt) {
+                    CommandPromptAction::Submitted(_) => {
+                        *command_prompt_visible = false;
+                    }
+                    CommandPromptAction::None => {}
+                }
+            }
+
+            match event {
+                WindowEvent::Key(Key::Slash, _, Action::Press, _) => {
+                    *command_prompt_visible = !*command_prompt_visible;
+                    command_prompt.reset();
+                }
+                _ => {
+                    if !*command_prompt_visible {
+                        Self::handle_window_event(&event, input_handler, camera, ui, chunks);
+                    }
+                }
+            }
+        }
+
+        if !*command_prompt_visible {
+            Self::handle_keyboard_input(window, camera, sky, delta_time, *command_prompt_visible);
+        }
+
+        if *command_prompt_visible {
+            if window.get_key(Key::Backspace) == Action::Press {
+                command_prompt.update_backspace_hold(delta_time);
+            } else {
+                command_prompt.on_backspace_release();
+            }
+        }
+
+        window.set_char_polling(*command_prompt_visible);
     }
 }

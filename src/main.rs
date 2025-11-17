@@ -2,6 +2,7 @@ mod biome;
 mod block;
 mod camera;
 mod chunk;
+mod command_prompt;
 mod decoration;
 mod gamemode;
 mod input;
@@ -10,6 +11,7 @@ mod rng;
 mod shader;
 mod sky;
 mod terrain;
+mod text;
 mod texture;
 mod tree_generator;
 mod ui;
@@ -17,6 +19,7 @@ mod ui;
 use camera::Camera;
 use cgmath::{Deg, Matrix, perspective};
 use chunk::{CHUNK_SIZE, Chunk, ChunkMesh, ChunkPos, RENDER_DISTANCE};
+use command_prompt::CommandPrompt;
 use gl::types::*;
 use glfw::Context;
 use input::InputHandler;
@@ -28,6 +31,7 @@ use std::collections::HashSet;
 use std::ffi::CString;
 use std::sync::{Arc, Mutex};
 use terrain::TerrainGenerator;
+use text::TextRenderer;
 use texture::TextureAtlas;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 use tree_generator::TreeGenerator;
@@ -64,6 +68,9 @@ struct Game {
     pending_chunks: HashSet<ChunkPos>,
     ui: UserInterface,
     shader_uniforms: ShaderUniforms,
+    text_renderer: TextRenderer,
+    command_prompt: CommandPrompt,
+    command_prompt_visible: bool,
 }
 
 impl Game {
@@ -136,6 +143,8 @@ impl Game {
             });
         }
 
+        let text_renderer = TextRenderer::new()?;
+
         Ok(Game {
             chunks: HashMap::new(),
             camera: Camera::new(),
@@ -149,6 +158,9 @@ impl Game {
             pending_chunks: HashSet::new(),
             ui: UserInterface::new(),
             shader_uniforms,
+            text_renderer,
+            command_prompt: CommandPrompt::new(),
+            command_prompt_visible: false,
         })
     }
 
@@ -214,7 +226,7 @@ impl Game {
             .update_highlighted_block(self.camera.position, self.camera.front, &self.chunks);
     }
 
-    fn render(&self, width: u32, height: u32) {
+    fn render(&self, width: u32, height: u32, time: f32) {
         unsafe {
             gl::UseProgram(self.shader_program);
 
@@ -279,6 +291,19 @@ impl Game {
         }
 
         self.ui.render(width, height);
+
+        unsafe {
+            gl::Disable(gl::DEPTH_TEST);
+        }
+
+        if self.command_prompt_visible {
+            self.command_prompt
+                .render(&self.text_renderer, width, height, 2.0, time);
+        }
+
+        unsafe {
+            gl::Enable(gl::DEPTH_TEST);
+        }
     }
 }
 
@@ -331,23 +356,21 @@ async fn main() {
         last_frame = current_frame;
 
         glfw.poll_events();
-        for (_, event) in glfw::flush_messages(&events) {
-            InputHandler::handle_window_event(
-                &event,
-                &mut game.input_handler,
-                &mut game.camera,
-                &mut game.ui,
-                &mut game.chunks,
-            );
-        }
-
-        InputHandler::handle_keyboard_input(
+        InputHandler::process_events(
             &mut window,
+            &events,
+            &mut game.input_handler,
             &mut game.camera,
+            &mut game.ui,
+            &mut game.chunks,
+            &mut game.command_prompt,
+            &mut game.command_prompt_visible,
             &mut game.sky,
             delta_time,
         );
+
         game.sky.day_night_cycle.update(delta_time);
+        game.command_prompt.update(delta_time);
         game.update_chunks().await;
 
         let sky_color = Sky::get_sky_color(game.sky.day_night_cycle.time);
@@ -357,7 +380,7 @@ async fn main() {
         }
 
         let (width, height) = window.get_size();
-        game.render(width as u32, height as u32);
+        game.render(width as u32, height as u32, current_frame);
 
         window.swap_buffers();
     }

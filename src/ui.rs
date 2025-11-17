@@ -27,6 +27,11 @@ pub struct UserInterface {
     exposed_faces: [bool; 6],
     pub mode: GameMode,
     last_hit_face: usize,
+    crosshair_proj_loc: GLint,
+    crosshair_color_loc: GLint,
+    highlight_view_loc: GLint,
+    highlight_proj_loc: GLint,
+    highlight_color_loc: GLint,
 }
 
 impl UserInterface {
@@ -80,6 +85,23 @@ impl UserInterface {
             (vao, vbo)
         };
 
+        let (crosshair_proj_loc, crosshair_color_loc) = unsafe {
+            gl::UseProgram(shader_program);
+            (
+                gl::GetUniformLocation(shader_program, CString::new("projection").unwrap().as_ptr()),
+                gl::GetUniformLocation(shader_program, CString::new("crosshairColor").unwrap().as_ptr()),
+            )
+        };
+
+        let (highlight_view_loc, highlight_proj_loc, highlight_color_loc) = unsafe {
+            gl::UseProgram(highlight_shader_program);
+            (
+                gl::GetUniformLocation(highlight_shader_program, CString::new("view").unwrap().as_ptr()),
+                gl::GetUniformLocation(highlight_shader_program, CString::new("projection").unwrap().as_ptr()),
+                gl::GetUniformLocation(highlight_shader_program, CString::new("highlightColor").unwrap().as_ptr()),
+            )
+        };
+
         UserInterface {
             vao,
             vbo,
@@ -93,6 +115,11 @@ impl UserInterface {
             exposed_faces: [true; 6],
             mode: GameMode::Normal,
             last_hit_face: 0,
+            crosshair_proj_loc,
+            crosshair_color_loc,
+            highlight_view_loc,
+            highlight_proj_loc,
+            highlight_color_loc,
         }
     }
 
@@ -454,6 +481,7 @@ impl UserInterface {
                 let vertices = Self::build_highlight_mesh(block_pos);
                 self.highlight_vertex_count = (vertices.len() as GLsizei) / 3;
 
+                gl::BindVertexArray(self.highlight_vao);
                 gl::BindBuffer(gl::ARRAY_BUFFER, self.highlight_vbo);
                 gl::BufferData(
                     gl::ARRAY_BUFFER,
@@ -461,10 +489,7 @@ impl UserInterface {
                     vertices.as_ptr() as *const _,
                     gl::DYNAMIC_DRAW,
                 );
-                gl::BindBuffer(gl::ARRAY_BUFFER, 0);
 
-                gl::BindVertexArray(self.highlight_vao);
-                gl::BindBuffer(gl::ARRAY_BUFFER, self.highlight_vbo);
                 gl::VertexAttribPointer(
                     0,
                     3,
@@ -474,6 +499,7 @@ impl UserInterface {
                     ptr::null(),
                 );
                 gl::EnableVertexAttribArray(0);
+
                 gl::BindBuffer(gl::ARRAY_BUFFER, 0);
                 gl::BindVertexArray(0);
             } else {
@@ -492,29 +518,15 @@ impl UserInterface {
             unsafe {
                 gl::UseProgram(self.highlight_shader_program);
 
-                let view_loc = gl::GetUniformLocation(
-                    self.highlight_shader_program,
-                    CString::new("view").unwrap().as_ptr(),
-                );
-                let proj_loc = gl::GetUniformLocation(
-                    self.highlight_shader_program,
-                    CString::new("projection").unwrap().as_ptr(),
-                );
-
-                gl::UniformMatrix4fv(view_loc, 1, gl::FALSE, view_matrix.as_ptr());
-                gl::UniformMatrix4fv(proj_loc, 1, gl::FALSE, projection_matrix.as_ptr());
-
-                let color_loc = gl::GetUniformLocation(
-                    self.highlight_shader_program,
-                    CString::new("highlightColor").unwrap().as_ptr(),
-                );
+                gl::UniformMatrix4fv(self.highlight_view_loc, 1, gl::FALSE, view_matrix.as_ptr());
+                gl::UniformMatrix4fv(self.highlight_proj_loc, 1, gl::FALSE, projection_matrix.as_ptr());
 
                 let (r, g, b) = match self.mode {
                     GameMode::Delete => (220.0 / 255.0, 20.0 / 255.0, 60.0 / 255.0),
                     GameMode::Insert => (1.0, 1.0, 1.0),
                     GameMode::Normal => (1.0, 1.0, 1.0),
                 };
-                gl::Uniform4f(color_loc, r, g, b, 1.0);
+                gl::Uniform4f(self.highlight_color_loc, r, g, b, 1.0);
 
                 if self.highlight_vertex_count > 0 {
                     let depth_test_enabled = gl::IsEnabled(gl::DEPTH_TEST) == gl::TRUE;
@@ -992,17 +1004,8 @@ impl UserInterface {
 
             let identity = cgmath::Matrix4::<f32>::identity();
 
-            let proj_loc = gl::GetUniformLocation(
-                self.shader_program,
-                CString::new("projection").unwrap().as_ptr(),
-            );
-            gl::UniformMatrix4fv(proj_loc, 1, gl::FALSE, identity.as_ptr());
-
-            let color_loc = gl::GetUniformLocation(
-                self.shader_program,
-                CString::new("crosshairColor").unwrap().as_ptr(),
-            );
-            gl::Uniform4f(color_loc, 1.0, 1.0, 1.0, 1.0);
+            gl::UniformMatrix4fv(self.crosshair_proj_loc, 1, gl::FALSE, identity.as_ptr());
+            gl::Uniform4f(self.crosshair_color_loc, 1.0, 1.0, 1.0, 1.0);
 
             gl::BindVertexArray(self.vao);
             gl::DrawArrays(gl::LINES, 0, self.vertex_count);

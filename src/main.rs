@@ -42,6 +42,15 @@ struct ChunkGenerationResult {
     chunk: Chunk,
 }
 
+struct ShaderUniforms {
+    view_loc: GLint,
+    proj_loc: GLint,
+    sun_dir_loc: GLint,
+    ambient_loc: GLint,
+    sun_intensity_loc: GLint,
+    wicked_time_loc: GLint,
+}
+
 struct Game {
     chunks: HashMap<ChunkPos, Chunk>,
     camera: Camera,
@@ -54,6 +63,7 @@ struct Game {
     chunk_result_rx: UnboundedReceiver<ChunkGenerationResult>,
     pending_chunks: HashSet<ChunkPos>,
     ui: UserInterface,
+    shader_uniforms: ShaderUniforms,
 }
 
 impl Game {
@@ -61,6 +71,18 @@ impl Game {
         let texture_atlas = TextureAtlas::new()?;
         let sky = Sky::new(sky_shader_program)?;
         let terrain_generator = Arc::new(TerrainGenerator::new(42));
+
+        let shader_uniforms = unsafe {
+            gl::UseProgram(shader_program);
+            ShaderUniforms {
+                view_loc: gl::GetUniformLocation(shader_program, CString::new("view").unwrap().as_ptr()),
+                proj_loc: gl::GetUniformLocation(shader_program, CString::new("projection").unwrap().as_ptr()),
+                sun_dir_loc: gl::GetUniformLocation(shader_program, CString::new("sunDirection").unwrap().as_ptr()),
+                ambient_loc: gl::GetUniformLocation(shader_program, CString::new("ambientLight").unwrap().as_ptr()),
+                sun_intensity_loc: gl::GetUniformLocation(shader_program, CString::new("sunIntensity").unwrap().as_ptr()),
+                wicked_time_loc: gl::GetUniformLocation(shader_program, CString::new("wickedTime").unwrap().as_ptr()),
+            }
+        };
 
         let (chunk_request_tx, chunk_request_rx) = unbounded_channel::<ChunkGenerationRequest>();
         let (chunk_result_tx, chunk_result_rx) = unbounded_channel::<ChunkGenerationResult>();
@@ -108,6 +130,7 @@ impl Game {
             chunk_result_rx,
             pending_chunks: HashSet::new(),
             ui: UserInterface::new(),
+            shader_uniforms,
         })
     }
 
@@ -180,44 +203,21 @@ impl Game {
             let view = self.camera.get_view_matrix();
             let projection = perspective(Deg(45.0), width as f32 / height as f32, 0.1, 1000.0);
 
-            let view_loc =
-                gl::GetUniformLocation(self.shader_program, CString::new("view").unwrap().as_ptr());
-            let proj_loc = gl::GetUniformLocation(
-                self.shader_program,
-                CString::new("projection").unwrap().as_ptr(),
-            );
-            let sun_dir_loc = gl::GetUniformLocation(
-                self.shader_program,
-                CString::new("sunDirection").unwrap().as_ptr(),
-            );
-            let ambient_loc = gl::GetUniformLocation(
-                self.shader_program,
-                CString::new("ambientLight").unwrap().as_ptr(),
-            );
-            let sun_intensity_loc = gl::GetUniformLocation(
-                self.shader_program,
-                CString::new("sunIntensity").unwrap().as_ptr(),
-            );
-            let wicked_time_loc = gl::GetUniformLocation(
-                self.shader_program,
-                CString::new("wickedTime").unwrap().as_ptr(),
-            );
-
-            gl::UniformMatrix4fv(view_loc, 1, gl::FALSE, view.as_ptr());
-            gl::UniformMatrix4fv(proj_loc, 1, gl::FALSE, projection.as_ptr());
+            gl::UniformMatrix4fv(self.shader_uniforms.view_loc, 1, gl::FALSE, view.as_ptr());
+            gl::UniformMatrix4fv(self.shader_uniforms.proj_loc, 1, gl::FALSE, projection.as_ptr());
 
             let sun_dir = self.sky.get_sun_direction(self.sky.day_night_cycle.time);
-            gl::Uniform3f(sun_dir_loc, sun_dir.x, sun_dir.y, sun_dir.z);
+            gl::Uniform3f(self.shader_uniforms.sun_dir_loc, sun_dir.x, sun_dir.y, sun_dir.z);
             gl::Uniform1f(
-                ambient_loc,
+                self.shader_uniforms.ambient_loc,
                 Sky::get_ambient_light(self.sky.day_night_cycle.time),
             );
             gl::Uniform1f(
-                sun_intensity_loc,
+                self.shader_uniforms.sun_intensity_loc,
                 Sky::get_sun_intensity(self.sky.day_night_cycle.time),
             );
             gl::Uniform1f(
-                wicked_time_loc,
+                self.shader_uniforms.wicked_time_loc,
                 get_wicked_time_of_day(self.sky.day_night_cycle.time),
             );
 

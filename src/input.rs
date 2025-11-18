@@ -1,4 +1,4 @@
-use crate::block::BlockType;
+use crate::block::{BlockType, Rotation};
 use crate::camera::Camera;
 use crate::chunk::{Chunk, ChunkPos};
 use crate::command::CommandHandler;
@@ -146,7 +146,13 @@ impl InputHandler {
             let local_z = block_pos.z - chunk_z * CHUNK_SIZE;
 
             if let Some(chunk) = chunks.get_mut(&chunk_pos) {
-                chunk.set_block(local_x, block_pos.y, local_z, self.current_block);
+                chunk.set_block(
+                    local_x,
+                    block_pos.y,
+                    local_z,
+                    self.current_block,
+                    Rotation::none(),
+                );
             }
 
             if local_x == 0 {
@@ -200,7 +206,13 @@ impl InputHandler {
             let local_z = block_pos.z - chunk_z * CHUNK_SIZE;
 
             if let Some(chunk) = chunks.get_mut(&chunk_pos) {
-                chunk.set_block(local_x, block_pos.y, local_z, BlockType::Air);
+                chunk.set_block(
+                    local_x,
+                    block_pos.y,
+                    local_z,
+                    BlockType::Air,
+                    Rotation::none(),
+                );
             }
 
             if local_x == 0 {

@@ -1,10 +1,69 @@
-use crate::block::{BlockType, FaceDirection, RenderType};
+use crate::block::{BlockType, FaceDirection, RenderType, Rotation};
 use crate::chunk::Chunk;
 use crate::texture::{TextureAtlas, TextureCoords};
 
 pub struct MeshBuilder;
 
 impl MeshBuilder {
+    fn rotate_vertex(vertex: [f32; 3], origin: [f32; 3], rotation: Rotation) -> [f32; 3] {
+        let mut v = [
+            vertex[0] - origin[0],
+            vertex[1] - origin[1],
+            vertex[2] - origin[2],
+        ];
+
+        if rotation.x != 0 {
+            let rad = (rotation.x as f32).to_radians();
+            let cos_x = rad.cos();
+            let sin_x = rad.sin();
+            let y = v[1] * cos_x - v[2] * sin_x;
+            let z = v[1] * sin_x + v[2] * cos_x;
+            v[1] = y;
+            v[2] = z;
+        }
+
+        if rotation.y != 0 {
+            let rad = (rotation.y as f32).to_radians();
+            let cos_y = rad.cos();
+            let sin_y = rad.sin();
+            let x = v[0] * cos_y + v[2] * sin_y;
+            let z = -v[0] * sin_y + v[2] * cos_y;
+            v[0] = x;
+            v[2] = z;
+        }
+
+        if rotation.z != 0 {
+            let rad = (rotation.z as f32).to_radians();
+            let cos_z = rad.cos();
+            let sin_z = rad.sin();
+            let x = v[0] * cos_z - v[1] * sin_z;
+            let y = v[0] * sin_z + v[1] * cos_z;
+            v[0] = x;
+            v[1] = y;
+        }
+
+        [v[0] + origin[0], v[1] + origin[1], v[2] + origin[2]]
+    }
+
+    fn get_rotated_face_normal(face_dir: FaceDirection, rotation: Rotation) -> (i32, i32, i32) {
+        let normal_vec = match face_dir {
+            FaceDirection::Top => [0.0, 1.0, 0.0],
+            FaceDirection::Bottom => [0.0, -1.0, 0.0],
+            FaceDirection::Front => [0.0, 0.0, 1.0],
+            FaceDirection::Back => [0.0, 0.0, -1.0],
+            FaceDirection::Right => [1.0, 0.0, 0.0],
+            FaceDirection::Left => [-1.0, 0.0, 0.0],
+        };
+
+        let rotated_normal = Self::rotate_vertex(normal_vec, [0.0, 0.0, 0.0], rotation);
+
+        (
+            rotated_normal[0].round() as i32,
+            rotated_normal[1].round() as i32,
+            rotated_normal[2].round() as i32,
+        )
+    }
+
     pub fn build_chunk_mesh(chunk: &Chunk, atlas: &TextureAtlas) -> Vec<f32> {
         let mut vertices = Vec::new();
 
@@ -21,16 +80,34 @@ impl MeshBuilder {
                     let wz = (chunk.pos.z * crate::chunk::CHUNK_SIZE + z) as f32;
 
                     let props = block.get_properties();
+                    let instance_rotation = chunk.get_rotation(x, y, z);
 
                     match props.render_type {
                         RenderType::CrossPlant => {
                             Self::add_cross_plant(&mut vertices, wx, wy, wz, block, atlas);
                         }
                         RenderType::ScaledCube => {
-                            Self::add_scaled_cube(&mut vertices, wx, wy, wz, block, atlas);
+                            Self::add_scaled_cube(
+                                &mut vertices,
+                                wx,
+                                wy,
+                                wz,
+                                block,
+                                atlas,
+                                instance_rotation,
+                            );
                         }
                         RenderType::FullCube => {
-                            Self::add_full_cube(&mut vertices, chunk, x, y, z, block, atlas);
+                            Self::add_full_cube(
+                                &mut vertices,
+                                chunk,
+                                x,
+                                y,
+                                z,
+                                block,
+                                atlas,
+                                instance_rotation,
+                            );
                         }
                     }
                 }
@@ -48,6 +125,7 @@ impl MeshBuilder {
         z: i32,
         block: BlockType,
         atlas: &TextureAtlas,
+        rotation: Rotation,
     ) {
         let faces = [
             (FaceDirection::Top, 0, 1, 0),
@@ -59,7 +137,8 @@ impl MeshBuilder {
         ];
 
         for (face_dir, dx, dy, dz) in faces {
-            let adjacent = chunk.get_block(x + dx, y + dy, z + dz);
+            let (rdx, rdy, rdz) = Self::get_rotated_face_normal(face_dir, rotation);
+            let adjacent = chunk.get_block(x + rdx, y + rdy, z + rdz);
 
             let should_render = if block == BlockType::Water {
                 adjacent == BlockType::Air
@@ -85,7 +164,9 @@ impl MeshBuilder {
                         }
                         _ => atlas.get_tint(block),
                     };
-                    Self::add_face(vertices, wx, wy, wz, dx, dy, dz, tex_coords, tint);
+                    Self::add_face(
+                        vertices, wx, wy, wz, dx, dy, dz, tex_coords, tint, face_dir, rotation,
+                    );
                 }
             }
         }
@@ -98,6 +179,7 @@ impl MeshBuilder {
         z: f32,
         block: BlockType,
         atlas: &TextureAtlas,
+        rotation: Rotation,
     ) {
         let dims = block.get_properties().dimensions;
         let w = dims.width_pixels as f32 / 16.0;
@@ -124,6 +206,7 @@ impl MeshBuilder {
                 let tex_coords = atlas.get_tex_coords(tex_index);
                 Self::add_scaled_face(
                     vertices, x, y, z, dx, dy, dz, w, h, l, inset_x, inset_z, tex_coords, tint,
+                    face_dir, rotation,
                 );
             }
         }
@@ -144,6 +227,8 @@ impl MeshBuilder {
         inset_z: f32,
         tex: TextureCoords,
         tint: [f32; 3],
+        face_dir: FaceDirection,
+        rotation: Rotation,
     ) {
         let normal = [dx as f32, dy as f32, dz as f32];
         let (u_min, u_max, v_min, v_max) = if dy != 0 {
@@ -172,7 +257,7 @@ impl MeshBuilder {
             v_max,
         };
 
-        let uvs = inset_tex.get_uvs_for_face(dx, dy, dz);
+        let uvs = inset_tex.get_uvs_for_face(face_dir, rotation);
 
         #[rustfmt::skip]
         let verts = match (dx, dy, dz) {
@@ -239,11 +324,20 @@ impl MeshBuilder {
             _ => vec![],
         };
 
+        let origin = [x + 0.5, y + 0.5, z + 0.5];
+
         for (i, pos_idx) in (0..verts.len()).step_by(3).enumerate() {
-            vertices.extend_from_slice(&verts[pos_idx..pos_idx + 3]);
+            let rotated_vertex = Self::rotate_vertex(
+                [verts[pos_idx], verts[pos_idx + 1], verts[pos_idx + 2]],
+                origin,
+                rotation,
+            );
+            let rotated_normal = Self::rotate_vertex(normal, [0.0, 0.0, 0.0], rotation);
+
+            vertices.extend_from_slice(&rotated_vertex);
             vertices.extend_from_slice(&uvs[i]);
             vertices.extend_from_slice(&tint);
-            vertices.extend_from_slice(&normal);
+            vertices.extend_from_slice(&rotated_normal);
         }
     }
 
@@ -257,10 +351,12 @@ impl MeshBuilder {
         dz: i32,
         tex: TextureCoords,
         tint: [f32; 3],
+        face_dir: FaceDirection,
+        rotation: Rotation,
     ) {
         let normal = [dx as f32, dy as f32, dz as f32];
 
-        let uvs = tex.get_uvs_for_face(dx, dy, dz);
+        let uvs = tex.get_uvs_for_face(face_dir, rotation);
 
         #[rustfmt::skip]
         let verts = match (dx, dy, dz) {
@@ -321,11 +417,20 @@ impl MeshBuilder {
             _ => vec![],
         };
 
+        let origin = [x + 0.5, y + 0.5, z + 0.5];
+
         for (i, pos_idx) in (0..verts.len()).step_by(3).enumerate() {
-            vertices.extend_from_slice(&verts[pos_idx..pos_idx + 3]);
+            let rotated_vertex = Self::rotate_vertex(
+                [verts[pos_idx], verts[pos_idx + 1], verts[pos_idx + 2]],
+                origin,
+                rotation,
+            );
+            let rotated_normal = Self::rotate_vertex(normal, [0.0, 0.0, 0.0], rotation);
+
+            vertices.extend_from_slice(&rotated_vertex);
             vertices.extend_from_slice(&uvs[i]);
             vertices.extend_from_slice(&tint);
-            vertices.extend_from_slice(&normal);
+            vertices.extend_from_slice(&rotated_normal);
         }
     }
 

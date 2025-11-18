@@ -1,9 +1,10 @@
 use crate::biome;
-use crate::block::BlockType;
+use crate::block::{BlockType, Rotation};
 use crate::decoration::DecorationGenerator;
 use crate::terrain::TerrainGenerator;
 use crate::tree_generator::TreeGenerator;
 use gl::types::*;
+use std::collections::HashMap;
 use std::mem;
 use std::ptr;
 
@@ -19,6 +20,7 @@ pub struct ChunkPos {
 
 pub struct Chunk {
     pub blocks: Vec<BlockType>,
+    pub rotations: HashMap<(i32, i32, i32), Rotation>,
     pub mesh: Option<ChunkMesh>,
     pub pos: ChunkPos,
 }
@@ -31,6 +33,7 @@ impl Chunk {
     ) -> Self {
         let mut chunk = Chunk {
             blocks: vec![BlockType::Air; (CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE) as usize],
+            rotations: HashMap::new(),
             mesh: None,
             pos,
         };
@@ -87,11 +90,30 @@ impl Chunk {
         self.blocks[Self::get_index(x, y, z)]
     }
 
-    pub fn set_block(&mut self, x: i32, y: i32, z: i32, block: BlockType) {
+    pub fn get_rotation(&self, x: i32, y: i32, z: i32) -> Rotation {
+        if x < 0 || x >= CHUNK_SIZE || y < 0 || y >= CHUNK_HEIGHT || z < 0 || z >= CHUNK_SIZE {
+            return Rotation::none();
+        }
+        self.rotations
+            .get(&(x, y, z))
+            .copied()
+            .unwrap_or(Rotation::none())
+    }
+
+    pub fn set_block(&mut self, x: i32, y: i32, z: i32, block: BlockType, rotation: Rotation) {
         if x < 0 || x >= CHUNK_SIZE || y < 0 || y >= CHUNK_HEIGHT || z < 0 || z >= CHUNK_SIZE {
             return;
         }
-        self.blocks[Self::get_index(x, y, z)] = block;
+        let index = Self::get_index(x, y, z);
+        self.blocks[index] = block;
+
+        if block == BlockType::Air {
+            self.rotations.remove(&(x, y, z));
+        } else if rotation != Rotation::none() {
+            self.rotations.insert((x, y, z), rotation);
+        } else {
+            self.rotations.remove(&(x, y, z));
+        }
         self.mesh = None;
     }
 }

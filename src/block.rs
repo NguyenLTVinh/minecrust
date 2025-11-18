@@ -116,11 +116,21 @@ pub enum RenderType {
     CrossPlant,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum BlockRotation {
-    None,
-    Top,
-    Side,
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub struct Rotation {
+    pub x: u8,
+    pub y: u8,
+    pub z: u8,
+}
+
+impl Rotation {
+    pub fn new(x: u8, y: u8, z: u8) -> Self {
+        Rotation { x, y, z }
+    }
+
+    pub fn none() -> Self {
+        Rotation::new(0, 0, 0)
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -170,7 +180,7 @@ pub struct Block {
     pub dimensions: BlockDimensions,
     pub is_transparent: bool,
     pub texture: TexturePattern,
-    pub rotation: BlockRotation,
+    pub rotation: Rotation,
 }
 
 impl Block {
@@ -186,7 +196,7 @@ impl Block {
             dimensions: BlockDimensions::full(),
             is_transparent,
             texture,
-            rotation: BlockRotation::None,
+            rotation: Rotation::none(),
         }
     }
 
@@ -195,7 +205,7 @@ impl Block {
         self
     }
 
-    fn with_rotation(mut self, rotation: BlockRotation) -> Self {
+    fn with_rotation(mut self, rotation: Rotation) -> Self {
         self.rotation = rotation;
         self
     }

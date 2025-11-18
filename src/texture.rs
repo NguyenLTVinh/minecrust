@@ -1,4 +1,4 @@
-use crate::block::BlockType;
+use crate::block::{BlockType, FaceDirection, Rotation};
 use gl::types::*;
 use image::{DynamicImage, RgbaImage};
 use std::path::PathBuf;
@@ -64,41 +64,9 @@ impl TextureCoords {
         }
     }
 
-    pub fn get_uvs_for_face(&self, dx: i32, dy: i32, dz: i32) -> [[f32; 2]; 6] {
-        match (dx, dy, dz) {
-            (-1, 0, 0) => [
-                [self.u_max, self.v_max],
-                [self.u_min, self.v_max],
-                [self.u_min, self.v_min],
-                [self.u_max, self.v_max],
-                [self.u_min, self.v_min],
-                [self.u_max, self.v_min],
-            ],
-            (1, 0, 0) => [
-                [self.u_min, self.v_max],
-                [self.u_min, self.v_min],
-                [self.u_max, self.v_min],
-                [self.u_min, self.v_max],
-                [self.u_max, self.v_min],
-                [self.u_max, self.v_max],
-            ],
-            (0, 0, -1) => [
-                [self.u_min, self.v_max],
-                [self.u_max, self.v_max],
-                [self.u_max, self.v_min],
-                [self.u_min, self.v_max],
-                [self.u_max, self.v_min],
-                [self.u_min, self.v_min],
-            ],
-            (0, 0, 1) => [
-                [self.u_min, self.v_max],
-                [self.u_min, self.v_min],
-                [self.u_max, self.v_min],
-                [self.u_min, self.v_max],
-                [self.u_max, self.v_min],
-                [self.u_max, self.v_max],
-            ],
-            _ => [
+    pub fn get_uvs_for_face(&self, face_dir: FaceDirection, rotation: Rotation) -> [[f32; 2]; 6] {
+        let mut uvs = match face_dir {
+            FaceDirection::Top => [
                 [self.u_min, self.v_min],
                 [self.u_min, self.v_max],
                 [self.u_max, self.v_max],
@@ -106,7 +74,67 @@ impl TextureCoords {
                 [self.u_max, self.v_max],
                 [self.u_max, self.v_min],
             ],
+            FaceDirection::Bottom => [
+                [self.u_min, self.v_min],
+                [self.u_min, self.v_max],
+                [self.u_max, self.v_max],
+                [self.u_min, self.v_min],
+                [self.u_max, self.v_max],
+                [self.u_max, self.v_min],
+            ],
+            FaceDirection::Front => [
+                [self.u_min, self.v_max],
+                [self.u_min, self.v_min],
+                [self.u_max, self.v_min],
+                [self.u_min, self.v_max],
+                [self.u_max, self.v_min],
+                [self.u_max, self.v_max],
+            ],
+            FaceDirection::Back => [
+                [self.u_max, self.v_max],
+                [self.u_min, self.v_max],
+                [self.u_min, self.v_min],
+                [self.u_max, self.v_max],
+                [self.u_min, self.v_min],
+                [self.u_max, self.v_min],
+            ],
+            FaceDirection::Right => [
+                [self.u_min, self.v_max],
+                [self.u_min, self.v_min],
+                [self.u_max, self.v_min],
+                [self.u_min, self.v_max],
+                [self.u_max, self.v_min],
+                [self.u_max, self.v_max],
+            ],
+            FaceDirection::Left => [
+                [self.u_max, self.v_max],
+                [self.u_min, self.v_max],
+                [self.u_min, self.v_min],
+                [self.u_max, self.v_max],
+                [self.u_min, self.v_min],
+                [self.u_max, self.v_min],
+            ],
+        };
+
+        if face_dir == FaceDirection::Top || face_dir == FaceDirection::Bottom {
+            uvs = Self::rotate_uvs(uvs, rotation.y);
         }
+        uvs
+    }
+
+    fn rotate_uvs(mut uvs: [[f32; 2]; 6], degrees: u8) -> [[f32; 2]; 6] {
+        let num_rotations = degrees / 90;
+        for _ in 0..num_rotations {
+            let temp_uvs = uvs;
+            uvs[0] = temp_uvs[1];
+            uvs[1] = temp_uvs[2];
+            uvs[2] = temp_uvs[5];
+            uvs[5] = temp_uvs[0];
+
+            uvs[3] = uvs[0];
+            uvs[4] = uvs[2];
+        }
+        uvs
     }
 }
 

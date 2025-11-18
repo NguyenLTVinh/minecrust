@@ -1,4 +1,4 @@
-use crate::block::BlockType;
+use crate::block::{BlockType, Rotation};
 use crate::chunk::{CHUNK_HEIGHT, CHUNK_SIZE, Chunk};
 use crate::rng::SeededRng;
 
@@ -99,30 +99,42 @@ impl DecorationGenerator {
         if plant_type_seed < 25 {
             let threshold = Self::get_frequency_threshold(0.96, FrequencyTier::Frequent);
             if noise_value > threshold {
-                chunk.set_block(x, surface_y, z, BlockType::ShortGrass);
+                chunk.set_block(x, surface_y, z, BlockType::ShortGrass, Rotation::none());
             }
         } else if plant_type_seed < 45 {
             let threshold = Self::get_frequency_threshold(0.96, FrequencyTier::Moderate);
             if noise_value > threshold {
-                chunk.set_block(x, surface_y, z, BlockType::TallGrassBottom);
+                chunk.set_block(
+                    x,
+                    surface_y,
+                    z,
+                    BlockType::TallGrassBottom,
+                    Rotation::none(),
+                );
                 if surface_y + 1 < CHUNK_HEIGHT {
-                    chunk.set_block(x, surface_y + 1, z, BlockType::TallGrassTop);
+                    chunk.set_block(
+                        x,
+                        surface_y + 1,
+                        z,
+                        BlockType::TallGrassTop,
+                        Rotation::none(),
+                    );
                 }
             }
         } else if plant_type_seed < 65 {
             let threshold = Self::get_frequency_threshold(0.96, FrequencyTier::Moderate);
             if noise_value > threshold {
-                chunk.set_block(x, surface_y, z, BlockType::Poppy);
+                chunk.set_block(x, surface_y, z, BlockType::Poppy, Rotation::none());
             }
         } else if plant_type_seed < 80 {
             let threshold = Self::get_frequency_threshold(0.96, FrequencyTier::Moderate);
             if noise_value > threshold {
-                chunk.set_block(x, surface_y, z, BlockType::PinkTulip);
+                chunk.set_block(x, surface_y, z, BlockType::PinkTulip, Rotation::none());
             }
         } else {
             let threshold = Self::get_frequency_threshold(0.96, FrequencyTier::Rare);
             if noise_value > threshold {
-                chunk.set_block(x, surface_y, z, BlockType::TorchFlower);
+                chunk.set_block(x, surface_y, z, BlockType::TorchFlower, Rotation::none());
             }
         }
     }
@@ -142,25 +154,37 @@ impl DecorationGenerator {
         if plant_type_seed < 30 {
             let threshold = Self::get_frequency_threshold(0.93, FrequencyTier::Frequent);
             if noise_value > threshold {
-                chunk.set_block(x, surface_y, z, BlockType::ShortGrass);
+                chunk.set_block(x, surface_y, z, BlockType::ShortGrass, Rotation::none());
             }
         } else if plant_type_seed < 50 {
             let threshold = Self::get_frequency_threshold(0.93, FrequencyTier::Moderate);
             if noise_value > threshold {
-                chunk.set_block(x, surface_y, z, BlockType::TallGrassBottom);
+                chunk.set_block(
+                    x,
+                    surface_y,
+                    z,
+                    BlockType::TallGrassBottom,
+                    Rotation::none(),
+                );
                 if surface_y + 1 < CHUNK_HEIGHT {
-                    chunk.set_block(x, surface_y + 1, z, BlockType::TallGrassTop);
+                    chunk.set_block(
+                        x,
+                        surface_y + 1,
+                        z,
+                        BlockType::TallGrassTop,
+                        Rotation::none(),
+                    );
                 }
             }
         } else if plant_type_seed < 70 {
             let threshold = Self::get_frequency_threshold(0.93, FrequencyTier::Moderate);
             if noise_value > threshold {
-                chunk.set_block(x, surface_y, z, BlockType::Poppy);
+                chunk.set_block(x, surface_y, z, BlockType::Poppy, Rotation::none());
             }
         } else {
             let threshold = Self::get_frequency_threshold(0.93, FrequencyTier::Moderate);
             if noise_value > threshold {
-                chunk.set_block(x, surface_y, z, BlockType::PinkTulip);
+                chunk.set_block(x, surface_y, z, BlockType::PinkTulip, Rotation::none());
             }
         }
     }
@@ -180,25 +204,43 @@ impl DecorationGenerator {
         if plant_type_seed < 30 {
             let threshold = Self::get_frequency_threshold(0.94, FrequencyTier::Frequent);
             if noise_value > threshold {
-                chunk.set_block(x, surface_y, z, BlockType::ShortGrass);
+                chunk.set_block(x, surface_y, z, BlockType::ShortGrass, Rotation::none());
             }
         } else if plant_type_seed < 50 {
             let threshold = Self::get_frequency_threshold(0.94, FrequencyTier::Moderate);
             if noise_value > threshold {
-                chunk.set_block(x, surface_y, z, BlockType::Fern);
+                chunk.set_block(x, surface_y, z, BlockType::Fern, Rotation::none());
             }
         } else if plant_type_seed < 70 {
             let threshold = Self::get_frequency_threshold(0.94, FrequencyTier::Moderate);
             if noise_value > threshold {
-                chunk.set_block(x, surface_y, z, BlockType::LargeFernBottom);
+                chunk.set_block(
+                    x,
+                    surface_y,
+                    z,
+                    BlockType::LargeFernBottom,
+                    Rotation::none(),
+                );
                 if surface_y + 1 < CHUNK_HEIGHT {
-                    chunk.set_block(x, surface_y + 1, z, BlockType::LargeFernTop);
+                    chunk.set_block(
+                        x,
+                        surface_y + 1,
+                        z,
+                        BlockType::LargeFernTop,
+                        Rotation::none(),
+                    );
                 }
             }
         } else {
             let threshold = Self::get_frequency_threshold(0.94, FrequencyTier::Rare);
             if noise_value > threshold {
-                chunk.set_block(x, surface_y, z, BlockType::SweetBerryBushStage1);
+                chunk.set_block(
+                    x,
+                    surface_y,
+                    z,
+                    BlockType::SweetBerryBushStage1,
+                    Rotation::none(),
+                );
             }
         }
     }
@@ -215,7 +257,7 @@ impl DecorationGenerator {
         let noise_value = rng.noise_f32();
 
         if noise_value > 0.92 {
-            chunk.set_block(x, surface_y, z, BlockType::BrownMushroom);
+            chunk.set_block(x, surface_y, z, BlockType::BrownMushroom, Rotation::none());
         }
     }
 
@@ -234,17 +276,17 @@ impl DecorationGenerator {
         if plant_type_seed < 35 {
             let threshold = Self::get_frequency_threshold(0.99, FrequencyTier::Frequent);
             if noise_value > threshold {
-                chunk.set_block(x, surface_y, z, BlockType::ShortDryGrass);
+                chunk.set_block(x, surface_y, z, BlockType::ShortDryGrass, Rotation::none());
             }
         } else if plant_type_seed < 65 {
             let threshold = Self::get_frequency_threshold(0.99, FrequencyTier::Moderate);
             if noise_value > threshold {
-                chunk.set_block(x, surface_y, z, BlockType::TallDryGrass);
+                chunk.set_block(x, surface_y, z, BlockType::TallDryGrass, Rotation::none());
             }
         } else {
             let threshold = Self::get_frequency_threshold(0.99, FrequencyTier::Rare);
             if noise_value > threshold {
-                chunk.set_block(x, surface_y, z, BlockType::DeadBush);
+                chunk.set_block(x, surface_y, z, BlockType::DeadBush, Rotation::none());
             }
         }
     }

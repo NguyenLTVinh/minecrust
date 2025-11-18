@@ -1,4 +1,4 @@
-use crate::block::BlockType;
+use crate::block::{BlockType, Rotation};
 use crate::chunk::{CHUNK_HEIGHT, CHUNK_SIZE, Chunk};
 use crate::rng::SeededRng;
 use crate::terrain::TerrainGenerator;
@@ -171,7 +171,7 @@ fn generate_oak_tree(chunk: &mut Chunk, x: i32, base_y: i32, z: i32, seed: u32) 
 
     let mut p_y = base_y;
     for _ in 0..trunk_height {
-        chunk.set_block(x, p_y, z, BlockType::OakLog);
+        chunk.set_block(x, p_y, z, BlockType::OakLog, Rotation::none());
         p_y += 1;
     }
 
@@ -187,7 +187,13 @@ fn generate_oak_tree(chunk: &mut Chunk, x: i32, base_y: i32, z: i32, seed: u32) 
 
                     let current_block = chunk.get_block(world_x, world_y, world_z);
                     if current_block == BlockType::Air || current_block == BlockType::SnowLayer {
-                        chunk.set_block(world_x, world_y, world_z, BlockType::OakLeaves);
+                        chunk.set_block(
+                            world_x,
+                            world_y,
+                            world_z,
+                            BlockType::OakLeaves,
+                            Rotation::none(),
+                        );
                     }
                 }
             }
@@ -258,7 +264,7 @@ fn generate_birch_tree(chunk: &mut Chunk, x: i32, base_y: i32, z: i32, seed: u32
 
     let mut p_y = base_y;
     for _ in 0..trunk_height {
-        chunk.set_block(x, p_y, z, BlockType::BirchLog);
+        chunk.set_block(x, p_y, z, BlockType::BirchLog, Rotation::none());
         p_y += 1;
     }
 
@@ -274,7 +280,13 @@ fn generate_birch_tree(chunk: &mut Chunk, x: i32, base_y: i32, z: i32, seed: u32
 
                     let current_block = chunk.get_block(world_x, world_y, world_z);
                     if current_block == BlockType::Air || current_block == BlockType::SnowLayer {
-                        chunk.set_block(world_x, world_y, world_z, BlockType::BirchLeaves);
+                        chunk.set_block(
+                            world_x,
+                            world_y,
+                            world_z,
+                            BlockType::BirchLeaves,
+                            Rotation::none(),
+                        );
                     }
                 }
             }
@@ -382,7 +394,7 @@ fn generate_spruce_tree(chunk: &mut Chunk, x: i32, base_y: i32, z: i32, seed: u3
 
     let mut p_y = base_y;
     for _ in 0..trunk_height {
-        chunk.set_block(x, p_y, z, BlockType::SpruceLog);
+        chunk.set_block(x, p_y, z, BlockType::SpruceLog, Rotation::none());
         p_y += 1;
     }
 
@@ -398,7 +410,13 @@ fn generate_spruce_tree(chunk: &mut Chunk, x: i32, base_y: i32, z: i32, seed: u3
 
                     let current_block = chunk.get_block(world_x, world_y, world_z);
                     if current_block == BlockType::Air || current_block == BlockType::SnowLayer {
-                        chunk.set_block(world_x, world_y, world_z, BlockType::SpruceLeaves);
+                        chunk.set_block(
+                            world_x,
+                            world_y,
+                            world_z,
+                            BlockType::SpruceLeaves,
+                            Rotation::none(),
+                        );
                     }
                 }
             }
@@ -422,7 +440,7 @@ fn generate_cactus(chunk: &mut Chunk, x: i32, base_y: i32, z: i32, seed: u32) ->
 
     let mut p_y = base_y;
     for _ in 0..trunk_height {
-        chunk.set_block(x, p_y, z, BlockType::Cactus);
+        chunk.set_block(x, p_y, z, BlockType::Cactus, Rotation::none());
         p_y += 1;
     }
 
@@ -432,7 +450,7 @@ fn generate_cactus(chunk: &mut Chunk, x: i32, base_y: i32, z: i32, seed: u32) ->
         if flower_y < CHUNK_HEIGHT {
             let current_block = chunk.get_block(x, flower_y, z);
             if current_block == BlockType::Air || current_block.is_transparent() {
-                chunk.set_block(x, flower_y, z, BlockType::CactusFlower);
+                chunk.set_block(x, flower_y, z, BlockType::CactusFlower, Rotation::none());
             }
         }
     }

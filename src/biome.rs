@@ -1,4 +1,4 @@
-use crate::block::BlockType;
+use crate::block::{BlockType, Rotation};
 use crate::chunk::{CHUNK_HEIGHT, CHUNK_SIZE, Chunk};
 use crate::rng::SeededRng;
 use crate::terrain::TerrainGenerator;
@@ -301,7 +301,11 @@ pub fn generate_surface_variants(chunk: &mut Chunk, terrain_gen: &TerrainGenerat
                                                         | BlockType::SnowyGrassBlock
                                                 ) {
                                                     chunk.set_block(
-                                                        px_local, target_y, pz_local, variant,
+                                                        px_local,
+                                                        target_y,
+                                                        pz_local,
+                                                        variant,
+                                                        Rotation::none(),
                                                     );
                                                 }
                                             }
@@ -360,15 +364,27 @@ pub fn generate_snow(
                             let replace_seed = ((world_x * 9876 + world_z * 5432) as u32) % 100;
 
                             if replace_seed < 30 && adjusted_factor > 0.7 {
-                                chunk.set_block(x, y, z, BlockType::Snow);
+                                chunk.set_block(x, y, z, BlockType::Snow, Rotation::none());
                             } else {
-                                chunk.set_block(x, y, z, BlockType::SnowyGrassBlock);
+                                chunk.set_block(
+                                    x,
+                                    y,
+                                    z,
+                                    BlockType::SnowyGrassBlock,
+                                    Rotation::none(),
+                                );
                             }
                             let snow_y = y + 1;
                             if snow_y < CHUNK_HEIGHT
                                 && chunk.get_block(x, snow_y, z) == BlockType::Air
                             {
-                                chunk.set_block(x, snow_y, z, BlockType::SnowLayer);
+                                chunk.set_block(
+                                    x,
+                                    snow_y,
+                                    z,
+                                    BlockType::SnowLayer,
+                                    Rotation::none(),
+                                );
                             }
                         }
                         _ if block.is_full_block() => {
@@ -376,7 +392,13 @@ pub fn generate_snow(
                             if snow_y < CHUNK_HEIGHT
                                 && chunk.get_block(x, snow_y, z) == BlockType::Air
                             {
-                                chunk.set_block(x, snow_y, z, BlockType::SnowLayer);
+                                chunk.set_block(
+                                    x,
+                                    snow_y,
+                                    z,
+                                    BlockType::SnowLayer,
+                                    Rotation::none(),
+                                );
                             }
                         }
                         _ => {}

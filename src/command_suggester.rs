@@ -30,7 +30,7 @@ pub struct CommandSuggester;
 
 impl CommandSuggester {
     fn get_available_commands() -> Vec<&'static str> {
-        vec!["use", "time"]
+        vec!["use", "time", "rorate"]
     }
 
     fn get_available_arguments(command: &str) -> Vec<&'static str> {
@@ -39,6 +39,13 @@ impl CommandSuggester {
             "time" => vec!["night", "noon", "dawn", "dusk", "toggle"],
             _ => vec![],
         }
+    }
+
+    fn get_block_suggestions(input: &str, limit: usize) -> Vec<CommandSuggestion> {
+        BlockSuggester::suggest(input, limit)
+            .into_iter()
+            .map(|bs| CommandSuggestion::Block("use".to_string(), bs.block_name, bs.score))
+            .collect()
     }
 
     fn suggest_commands(input: &str, limit: usize) -> Vec<CommandSuggestion> {
@@ -122,18 +129,10 @@ impl CommandSuggester {
             0 => Self::suggest_commands("", limit),
             1 => {
                 let word = parts[0];
-                if Self::get_available_commands().contains(&word) {
-                    if word == "use" {
-                        let block_suggestions = BlockSuggester::suggest("", limit);
-                        block_suggestions
-                            .into_iter()
-                            .map(|bs| {
-                                CommandSuggestion::Block("use".to_string(), bs.block_name, bs.score)
-                            })
-                            .collect()
-                    } else {
-                        Self::suggest_arguments(word, "", limit)
-                    }
+                if word == "use" {
+                    Self::get_block_suggestions("", limit)
+                } else if Self::get_available_commands().contains(&word) {
+                    Self::suggest_arguments(word, "", limit)
                 } else {
                     Self::suggest_commands(word, limit)
                 }
@@ -142,13 +141,7 @@ impl CommandSuggester {
                 let command = parts[0];
                 let arg_input = parts[1..].join(" ");
                 if command == "use" {
-                    let block_suggestions = BlockSuggester::suggest(&arg_input, limit);
-                    block_suggestions
-                        .into_iter()
-                        .map(|bs| {
-                            CommandSuggestion::Block("use".to_string(), bs.block_name, bs.score)
-                        })
-                        .collect()
+                    Self::get_block_suggestions(&arg_input, limit)
                 } else if Self::get_available_commands().contains(&command) {
                     Self::suggest_arguments(command, &arg_input, limit)
                 } else {

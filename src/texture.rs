@@ -115,25 +115,6 @@ impl TextureCoords {
                 [self.u_max, self.v_min],
             ],
         };
-
-        if face_dir == FaceDirection::Top || face_dir == FaceDirection::Bottom {
-            uvs = Self::rotate_uvs(uvs, rotation.y);
-        }
-        uvs
-    }
-
-    fn rotate_uvs(mut uvs: [[f32; 2]; 6], degrees: u8) -> [[f32; 2]; 6] {
-        let num_rotations = degrees / 90;
-        for _ in 0..num_rotations {
-            let temp_uvs = uvs;
-            uvs[0] = temp_uvs[1];
-            uvs[1] = temp_uvs[2];
-            uvs[2] = temp_uvs[5];
-            uvs[5] = temp_uvs[0];
-
-            uvs[3] = uvs[0];
-            uvs[4] = uvs[2];
-        }
         uvs
     }
 }

@@ -1,4 +1,5 @@
-use crate::block::{BlockType, Rotation};
+use crate::block::BlockType;
+use crate::block::Rotation;
 use crate::camera::Camera;
 use crate::chunk::{Chunk, ChunkPos};
 use crate::command::CommandHandler;
@@ -21,6 +22,7 @@ pub struct InputHandler {
     pub last_mouse_y: f64,
     pub first_mouse: bool,
     pub current_block: BlockType,
+    pub current_rotation: crate::block::Rotation,
 }
 
 impl InputHandler {
@@ -30,6 +32,7 @@ impl InputHandler {
             last_mouse_y: 300.0,
             first_mouse: true,
             current_block: BlockType::Stone,
+            current_rotation: crate::block::Rotation { x: 0, y: 0, z: 0 },
         }
     }
 
@@ -151,7 +154,7 @@ impl InputHandler {
                     block_pos.y,
                     local_z,
                     self.current_block,
-                    Rotation::none(),
+                    self.current_rotation.clone(),
                 );
             }
 
@@ -211,7 +214,7 @@ impl InputHandler {
                     block_pos.y,
                     local_z,
                     BlockType::Air,
-                    Rotation::none(),
+                    crate::block::Rotation { x: 0, y: 0, z: 0 },
                 );
             }
 
@@ -316,6 +319,17 @@ impl InputHandler {
                             }
                         }
                     }
+                    crate::command::CommandResult::RotationChange(rotation) => {
+                        input_handler.current_rotation = crate::block::Rotation {
+                            x: rotation.x,
+                            y: rotation.y,
+                            z: rotation.z,
+                        };
+                        command_prompt.set_message(format!(
+                            "Block rotation set to: x={}, y={}, z={}",
+                            rotation.x, rotation.y, rotation.z
+                        ));
+                    }
                 }
 
                 command_prompt.reset();
@@ -369,6 +383,9 @@ impl InputHandler {
                 WindowEvent::Key(Key::Slash, _, Action::Press, _) => {
                     *command_prompt_visible = !*command_prompt_visible;
                     command_prompt.reset();
+                    if *command_prompt_visible {
+                        command_prompt.update_suggestions();
+                    }
                 }
                 _ => {
                     if !*command_prompt_visible {

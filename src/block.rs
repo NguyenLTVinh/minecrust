@@ -118,13 +118,13 @@ pub enum RenderType {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub struct Rotation {
-    pub x: u8,
-    pub y: u8,
-    pub z: u8,
+    pub x: u16,
+    pub y: u16,
+    pub z: u16,
 }
 
 impl Rotation {
-    pub fn new(x: u8, y: u8, z: u8) -> Self {
+    pub fn new(x: u16, y: u16, z: u16) -> Self {
         Rotation { x, y, z }
     }
 

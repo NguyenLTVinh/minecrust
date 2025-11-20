@@ -1,73 +1,95 @@
-# MineCRust - A Voxel Engine in Rust
+# MineCRust
 
-A Minecraft-inspired voxel engine built from scratch in Rust using OpenGL, featuring procedural world generation, multiple biomes, dynamic day-night cycles, and realistic lighting.
+A Voxel engine implementation written in Rust, featuring infinite terrain generation, world-editing, and a command system.
 
-## Overview
+## Features
 
-MineCRust is a 3D voxel-based game engine that generates infinite procedurally generated worlds with multiple biome types, vegetation, trees, and more. The project demonstrates graphics programming, procedural generation algorithms, and Rust's capabilities for systems programming.
+- **Voxel Engine**: Chunk-based rendering with efficient face-culling mesh generation.
+- **Infinite Terrain**: Procedurally generated terrain with diverse biomes.
+- **Dynamic Sky**: Real-time day-night cycle with sun, and moon.
+- **Building System**: Place and remove blocks with support for rotation.
+- **Command Interface**: Built-in command prompt for game control.
+- **Lighting**: Basic lighting system affected by the day-night cycle.
 
-## How To Run
+## Screenshots
+![game scene sample](assets/scene1.png)
+![game scene sample](assets/scene2.png)
+![game scene sample](assets/scene3.png)
+
+## Getting Started
 
 ### Prerequisites
 
-- Rust 1.70 or later
+- Rust (latest stable version)
+- Cargo
 - OpenGL 3.3 capable GPU
 - GLFW3 development libraries (for compilation)
 
-### Build
+### Running the Game
 
-```bash
-cargo build --release
-```
-
-### Run
+1. Clone the repository.
+2. Navigate to the project directory.
+3. Run the game using Cargo:
 
 ```bash
 cargo run --release
 ```
 
-### Project Dependencies
+## Controls
 
-- **glfw** (0.42): Window and input management
-- **gl** (0.14): OpenGL bindings
-- **cgmath** (0.18): 3D math (vectors, matrices)
-- **noise** (0.8): Perlin noise generation
-- **rand** (0.9.2): Random number generation
-- **image** (0.25.8): Texture loading (PNG support)
-- **tokio** (1.42): Multi-threaded and async runtime
-- **crossbeam-channel** (0.5): Multi-threaded communication
-- **lazy_static** (1.4): Global state management
+### Movement
+- **W, A, S, D**: Move camera
+- **Space**: Fly Up
+- **Left Shift**: Fly Down
+- **Left Control**: Sprint (Increase speed)
+- **Mouse**: Look around
 
-## Features
+### Game Modes
+- **Num 1**: Normal Mode (Spectate)
+- **Num 2**: Insert Mode (Block placement)
+- **Num 3**: Delete Mode (Block removal)
+- **Esc**: Return to Normal Mode
 
-### 🌍 World Generation
+### Interaction
+- **Right Click**: Place block (in Insert Mode)
+- **Left Click**: Remove block (in Delete Mode)
 
-- **Procedural Terrain**: Perlin noise-based terrain generation
-- **Multiple Biomes**: Grasslands, deserts, taigas—you name it. New biomes can be added easily thanks to the modular design
-- **Water Bodies**: Dynamic water generation at configurable water levels
-- **River Channels**: Procedurally generated river systems
-- **Mountains**: Layered mountain generation that can be tweaked for extreme heights
+### Command Prompt
+- **/**: Toggle Command Prompt
+- **Up/Down**: Navigate command suggestions
+- **Right Arrow**: Autocomplete suggestion
+- **Enter**: Execute command
 
-### 🌳 Vegetation
+### Block Selection
+Set the current block type for placement.
+```
+use <BlockType>;
+```
+Example: `use Stone;`
 
-- **Tree Generation**: Multiple tree types with realistic structures
-- **Flora & Fauna**: Tall and short grass, various flowers, mushrooms, ferns, dead bushes, and more
+### Time Control
+Control the in-game time and day-night cycle.
+```
+time <argument>;
+```
+Arguments:
+- `dawn`: Set time to dawn
+- `noon`: Set time to noon
+- `dusk`: Set time to dusk
+- `night`: Set time to night
+- `toggle`: Toggle automatic day-night cycle
 
-### 🎮 Gameplay Mechanics
+### Block Rotation
+Set the rotation for the next block to be placed. Values must be multiples of 90.
+```
+rotate <x> <y> <z>;
+```
+Example: `rotate 0 90 0;`
 
-- **Free Camera Movement**: WASD for movement, Space/Shift for vertical movement
-- **Mouse Look**: Free-look camera control
-- **Chunk System**: Multi-threaded, asynchronous chunk-based rendering with configurable render distance
-- **Mesh Optimization**: Only visible faces are rendered using greedy meshing
-- **Level of Detail**: Dynamic mesh generation and unloading based on player proximity
+## Dependencies
 
-### 🎨 Graphics
-
-- **Texture Atlas**: All block textures combined into a single texture atlas
-- **Biome-Specific Textures**: Different texture variants for different biomes
-- **Dynamic Tinting**: Grass and foliage colors adapt based on biome
-- **Vertex Lighting**: Per-vertex lighting calculations for realistic shading
-
-## Credits
-
-MineCRust was created as a demonstration of procedural generation and graphics programming in Rust. Inspired by Minecraft and built with modern Rust practices.
+- **glfw**: Window creation and input handling.
+- **gl**: OpenGL bindings.
+- **cgmath**: Linear algebra and math utilities.
+- **noise**: Noise generation for terrain.
+- **tokio**: Async runtime for multithreaded chunk generation.

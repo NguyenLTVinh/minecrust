@@ -22,6 +22,7 @@ mod ui;
 use camera::Camera;
 use cgmath::{Deg, Matrix, perspective};
 use chunk::{CHUNK_SIZE, Chunk, ChunkMesh, ChunkPos, RENDER_DISTANCE};
+use clap::Parser;
 use command_prompt::CommandPrompt;
 use gl::types::*;
 use glfw::Context;
@@ -39,6 +40,13 @@ use texture::TextureAtlas;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 use tree_generator::TreeGenerator;
 use ui::UserInterface;
+
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    #[arg(short, long, default_value_t = 120)]
+    seed: u32,
+}
 
 struct ChunkGenerationRequest {
     pos: ChunkPos,
@@ -77,10 +85,14 @@ struct Game {
 }
 
 impl Game {
-    pub fn new(shader_program: GLuint, sky_shader_program: GLuint) -> Result<Self, String> {
+    pub fn new(
+        shader_program: GLuint,
+        sky_shader_program: GLuint,
+        seed: u32,
+    ) -> Result<Self, String> {
         let texture_atlas = TextureAtlas::new()?;
         let sky = Sky::new(sky_shader_program)?;
-        let terrain_generator = Arc::new(TerrainGenerator::new(42));
+        let terrain_generator = Arc::new(TerrainGenerator::new(seed));
 
         let shader_uniforms = unsafe {
             gl::UseProgram(shader_program);
@@ -321,6 +333,8 @@ impl Drop for Game {
 
 #[tokio::main]
 async fn main() {
+    let args = Args::parse();
+
     let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
     glfw.window_hint(glfw::WindowHint::ContextVersion(3, 3));
     glfw.window_hint(glfw::WindowHint::OpenGlProfile(
@@ -352,8 +366,8 @@ async fn main() {
     let sky_fragment_shader = compile_shader(SKY_FRAGMENT_SHADER, gl::FRAGMENT_SHADER);
     let sky_shader_program = link_program(sky_vertex_shader, sky_fragment_shader);
 
-    let mut game =
-        Game::new(shader_program, sky_shader_program).expect("Failed to initialize game");
+    let mut game = Game::new(shader_program, sky_shader_program, args.seed)
+        .expect("Failed to initialize game");
     let mut last_frame = glfw.get_time() as f32;
 
     while !window.should_close() {

@@ -1051,27 +1051,8 @@ impl Drop for UserInterface {
 }
 
 fn create_crosshair_shader() -> GLuint {
-    let vertex_src = r#"
-#version 330 core
-layout (location = 0) in vec3 aPos;
-
-uniform mat4 projection;
-
-void main() {
-    gl_Position = projection * vec4(aPos, 1.0);
-}
-"#;
-
-    let fragment_src = r#"
-#version 330 core
-uniform vec4 crosshairColor;
-
-out vec4 color;
-
-void main() {
-    color = crosshairColor;
-}
-"#;
+    let vertex_src = include_str!("../shaders/ui_crosshair_vertex.glsl");
+    let fragment_src = include_str!("../shaders/ui_crosshair_fragment.glsl");
 
     unsafe {
         let vertex_shader = gl::CreateShader(gl::VERTEX_SHADER);
@@ -1097,28 +1078,8 @@ void main() {
 }
 
 fn create_highlight_shader() -> GLuint {
-    let vertex_src = r#"
-#version 330 core
-layout (location = 0) in vec3 aPos;
-
-uniform mat4 view;
-uniform mat4 projection;
-
-void main() {
-    gl_Position = projection * view * vec4(aPos, 1.0);
-}
-"#;
-
-    let fragment_src = r#"
-#version 330 core
-uniform vec4 highlightColor;
-
-out vec4 color;
-
-void main() {
-    color = highlightColor;
-}
-"#;
+    let vertex_src = include_str!("../shaders/ui_highlight_vertex.glsl");
+    let fragment_src = include_str!("../shaders/ui_highlight_fragment.glsl");
 
     unsafe {
         let vertex_shader = gl::CreateShader(gl::VERTEX_SHADER);

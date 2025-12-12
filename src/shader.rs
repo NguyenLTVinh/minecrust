@@ -46,58 +46,6 @@ pub fn link_program(vs: GLuint, fs: GLuint) -> GLuint {
     }
 }
 
-pub const VERTEX_SHADER: &str = r#"
-#version 330 core
-layout (location = 0) in vec3 aPos;
-layout (location = 1) in vec2 aTexCoord;
-layout (location = 2) in vec3 aTint;
-layout (location = 3) in vec3 aNormal;
+pub const VERTEX_SHADER: &str = include_str!("../shaders/block_vertex.glsl");
 
-out vec2 TexCoord;
-out vec3 Tint;
-out vec3 Normal;
-
-uniform mat4 view;
-uniform mat4 projection;
-
-void main() {
-    gl_Position = projection * view * vec4(aPos, 1.0);
-    TexCoord = aTexCoord;
-    Tint = aTint;
-    Normal = aNormal;
-}
-"#;
-
-pub const FRAGMENT_SHADER: &str = r#"
-#version 330 core
-in vec2 TexCoord;
-in vec3 Tint;
-in vec3 Normal;
-
-out vec4 color;
-
-uniform sampler2D blockTexture;
-uniform vec3 sunDirection;
-uniform float ambientLight;
-uniform float sunIntensity;
-uniform float wickedTime;
-
-void main() {
-    vec4 texColor = texture(blockTexture, TexCoord);
-    
-    if (texColor.a < 0.5) {
-        discard;
-    }
-    
-    vec3 tintedColor = texColor.rgb * Tint;
-    
-    vec3 norm = normalize(Normal);
-    vec3 lightDir = normalize(sunDirection);
-    
-    float diff = max(dot(norm, lightDir), 0.0) * sunIntensity;
-    float totalLight = ambientLight + diff * (1.0 - ambientLight);
-    
-    vec3 result = tintedColor * totalLight;
-    color = vec4(result, 1.0);
-}
-"#;
+pub const FRAGMENT_SHADER: &str = include_str!("../shaders/block_fragment.glsl");

@@ -30,7 +30,7 @@ pub struct CommandSuggester;
 
 impl CommandSuggester {
     fn get_available_commands() -> Vec<&'static str> {
-        vec!["use", "time", "rorate"]
+        vec!["use", "time", "rotate"]
     }
 
     fn get_available_arguments(command: &str) -> Vec<&'static str> {

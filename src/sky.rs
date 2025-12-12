@@ -518,27 +518,6 @@ pub fn get_wicked_time_of_day(time_of_day: f32) -> f32 {
     }
 }
 
-pub const SKY_VERTEX_SHADER: &str = r#"
-#version 330 core
-layout (location = 0) in vec3 aPos;
+pub const SKY_VERTEX_SHADER: &str = include_str!("../shaders/sky_vertex.glsl");
 
-uniform mat4 model;
-uniform mat4 view;
-uniform mat4 projection;
-
-void main() {
-    gl_Position = projection * view * model * vec4(aPos, 1.0);
-}
-"#;
-
-pub const SKY_FRAGMENT_SHADER: &str = r#"
-#version 330 core
-
-out vec4 FragColor;
-
-uniform vec4 bodyColor;
-
-void main() {
-    FragColor = bodyColor;
-}
-"#;
+pub const SKY_FRAGMENT_SHADER: &str = include_str!("../shaders/sky_fragment.glsl");

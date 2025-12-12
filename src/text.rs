@@ -227,33 +227,11 @@ fn load_font_texture(file_path: &str) -> Result<GLuint, String> {
 }
 
 fn create_prompt_shader_program() -> Result<GLuint, String> {
-    let vertex_src = CString::new(
-        r#"
-#version 330 core
+    let vertex_src = CString::new(include_str!("../shaders/text_prompt_vertex.glsl"))
+        .map_err(|_| "Failed to create prompt vertex shader source".to_string())?;
 
-layout(location=0) in vec3 aPos;
-
-uniform mat4 projection;
-
-void main() {
-    gl_Position = projection * vec4(aPos, 1.0);
-}
-"#,
-    )
-    .map_err(|_| "Failed to create prompt vertex shader source".to_string())?;
-
-    let fragment_src = CString::new(
-        r#"
-#version 330 core
-
-out vec4 color;
-
-void main() {
-    color = vec4(0.5, 0.5, 0.5, 0.5);
-}
-"#,
-    )
-    .map_err(|_| "Failed to create prompt fragment shader source".to_string())?;
+    let fragment_src = CString::new(include_str!("../shaders/text_prompt_fragment.glsl"))
+        .map_err(|_| "Failed to create prompt fragment shader source".to_string())?;
 
     unsafe {
         let vertex_shader = gl::CreateShader(gl::VERTEX_SHADER);
@@ -318,65 +296,11 @@ void main() {
 }
 
 fn create_text_shader_program() -> Result<GLuint, String> {
-    let vertex_src = CString::new(r#"
-#version 330 core
+    let vertex_src = CString::new(include_str!("../shaders/text_vertex.glsl"))
+        .map_err(|_| "Failed to create vertex shader source".to_string())?;
 
-layout(location=0) in int letter;
-
-uniform vec2 resolution;
-uniform vec2 message_position;
-uniform float message_scale;
-
-out vec2 uv;
-
-#define FONT_SHEET_WIDTH 128
-#define FONT_SHEET_HEIGHT 64
-#define FONT_SHEET_COLS 18
-#define FONT_SHEET_ROWS 7
-#define FONT_CHAR_WIDTH (FONT_SHEET_WIDTH / FONT_SHEET_COLS)
-#define FONT_CHAR_HEIGHT (FONT_SHEET_HEIGHT / FONT_SHEET_ROWS)
-
-void main() {
-    vec2 mesh_position = vec2(
-        float(gl_VertexID & 1),
-        float((gl_VertexID >> 1) & 1));
-
-    vec2 screen_position =
-        mesh_position * vec2(float(FONT_CHAR_WIDTH), float(FONT_CHAR_HEIGHT)) * message_scale +
-        message_position +
-        vec2(float(FONT_CHAR_WIDTH) * message_scale * float(gl_InstanceID), 0.0);
-
-    vec2 ndc = 2.0 * screen_position / resolution - 1.0;
-    ndc.y = -ndc.y;
-    
-    gl_Position = vec4(ndc, 0.0, 1.0);
-
-    int char_index = letter - 32;
-    float char_u = (float(char_index % FONT_SHEET_COLS) + mesh_position.x) * float(FONT_CHAR_WIDTH) / float(FONT_SHEET_WIDTH);
-    float char_v = (float(char_index / FONT_SHEET_COLS) + mesh_position.y) * float(FONT_CHAR_HEIGHT) / float(FONT_SHEET_HEIGHT);
-    uv = vec2(char_u, char_v);
-}
-"#).map_err(|_| "Failed to create vertex shader source".to_string())?;
-
-    let fragment_src = CString::new(
-        r#"
-#version 330 core
-
-uniform sampler2D font;
-
-in vec2 uv;
-out vec4 color;
-
-void main() {
-    vec4 tex_color = texture(font, uv);
-    if (tex_color.a < 0.5) {
-        discard;
-    }
-    color = tex_color;
-}
-"#,
-    )
-    .map_err(|_| "Failed to create fragment shader source".to_string())?;
+    let fragment_src = CString::new(include_str!("../shaders/text_fragment.glsl"))
+        .map_err(|_| "Failed to create fragment shader source".to_string())?;
 
     unsafe {
         let vertex_shader = gl::CreateShader(gl::VERTEX_SHADER);
